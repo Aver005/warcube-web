@@ -1,0 +1,33 @@
+@import "tailwindcss";
+
+body 
+{ 
+    display: flex;
+    width: 100vw;
+    height: 100vh;
+    justify-content: center;
+    align-items: center;
+    margin: 0;
+    padding: 0;
+    background-color: black;
+}
+
+main
+{
+    position: relative;
+    border: 1px solid #333;
+    border-radius: 1em;
+    padding: 2px;
+}
+
+canvas { display: block; }
+
+#ui 
+{
+    position: absolute;
+    top: 0;
+    left: 0;
+    user-select: none;
+    pointer-events: none;
+    z-index: 100;
+}

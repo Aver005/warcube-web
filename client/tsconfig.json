@@ -1,0 +1,19 @@
+{
+    "compilerOptions": 
+    {
+        "target": "ESNext",
+        "module": "ES6",
+        "moduleResolution": "bundler",
+        "jsx": "react",
+        "rootDir": ".",
+        "strict": true,
+        "skipLibCheck": true,
+        "forceConsistentCasingInFileNames": true,
+        "allowSyntheticDefaultImports": true,
+        "paths": {
+            "@/*": [
+                "./src/*"
+            ]
+        },
+    },
+}
