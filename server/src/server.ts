@@ -1,22 +1,31 @@
 import express from 'express';
 import http from 'http';
 import { Server, Socket } from 'socket.io';
-import cors from 'cors'; // Для разрешения кросс-доменных запросов (если клиент на другом порту)
+import cors from 'cors'; 
 import { PlayerMovementData, ShootData } from './types/Player';
+import { getRandomPositions } from './utils';
+import { PlayerDeadEvent } from './types/events/player-events';
 
 interface Player
 {
     id: string;
     x: number;
     y: number;
+    name: string;
+
+    kills: number;
+    deaths: number;
 }
 
 const app = express();
-app.use(cors()); // Включаем CORS для разработки, в production настройте более безопасно
+app.use(cors());
+
 const server = http.createServer(app);
-const io = new Server(server, {
-    cors: {
-        origin: "*", // Разрешить запросы с любого домена (для разработки)
+const io = new Server(server, 
+{
+    cors: 
+    {
+        origin: "*",
         methods: ["GET", "POST"]
     }
 });
@@ -27,24 +36,23 @@ io.on('connection', (socket: Socket) =>
 {
     console.log(`User connected: ${socket.id}`);
 
-    // Создаем нового игрока при подключении
-    players[socket.id] = {
+    players[socket.id] = 
+    {
         id: socket.id,
-        x: 400, // Начальная позиция X
-        y: 400 // Начальная позиция Y
+        name: `Игрок ${socket.id}`,
+        kills: 0,
+        deaths: 0,
+        ...getRandomPositions(),
     };
 
-    // Отправляем информацию о текущих игроках новому игроку
     socket.emit('currentPlayers', players);
-
-    // Сообщаем всем остальным клиентам о новом игроке
     socket.broadcast.emit('newPlayer', players[socket.id]);
 
     socket.on('playerMovement', (movementData: PlayerMovementData) => 
     {
         if (players[socket.id]) 
         {
-            players[socket.id] = 
+            players[socket.id] =
             {
                 ...players[socket.id],
                 ...movementData
@@ -55,7 +63,8 @@ io.on('connection', (socket: Socket) =>
 
     socket.on('playerShoot', (data: ShootData) => 
     {
-        socket.broadcast.emit('playerShoot', {
+        io.emit('playerShoot', 
+        {
             ...data,
             id: socket.id
         });
@@ -69,6 +78,26 @@ io.on('connection', (socket: Socket) =>
     socket.on('playerReloadComplete', () => 
     {
         io.emit('playerReloadComplete', socket.id);
+    });
+
+    socket.on('playerDead', (data: PlayerDeadEvent) => 
+    {
+        players[socket.id].deaths++;
+        players[socket.id] = 
+        {
+            ...players[socket.id],
+            ...getRandomPositions(),
+        };
+
+        const killerId = data.killerId;
+        players[killerId].kills += 1
+
+        io.emit('playerDead', 
+        { 
+            killerId,
+            ...players[socket.id],
+            killerName: players[killerId].name,
+        });
     });
 
     socket.on('disconnect', () =>

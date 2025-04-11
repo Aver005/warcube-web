@@ -27,3 +27,4 @@ logs/
 # Прочие
 coverage/
 *.tgz
+.env.local

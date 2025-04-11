@@ -17,7 +17,7 @@ const config: Phaser.Types.Core.GameConfig =
             debug: false
         }
     },
-    scene: MainScene
+    scene: MainScene,
 };
 
 export const SetupGame = () =>

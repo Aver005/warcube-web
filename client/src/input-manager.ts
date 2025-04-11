@@ -10,6 +10,9 @@ export class InputManager
     private keyD!: Phaser.Input.Keyboard.Key;
     private keyR!: Phaser.Input.Keyboard.Key;
     private keyI!: Phaser.Input.Keyboard.Key;
+    private key1!: Phaser.Input.Keyboard.Key;
+    private key2!: Phaser.Input.Keyboard.Key;
+    private key3!: Phaser.Input.Keyboard.Key;
     private fireButton!: boolean;
 
     constructor(scene: Phaser.Scene)
@@ -20,6 +23,7 @@ export class InputManager
     private initKeyboardControls(scene: Phaser.Scene)
     {
         if (!scene.input.keyboard) return;
+
         this.cursors = scene.input.keyboard.createCursorKeys();
         this.keyW = scene.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.W);
         this.keyA = scene.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.A);
@@ -27,6 +31,9 @@ export class InputManager
         this.keyD = scene.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.D);
         this.keyR = scene.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.R);
         this.keyI = scene.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.I);
+        this.key1 = scene.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.ONE);
+        this.key2 = scene.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.TWO);
+        this.key3 = scene.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.THREE);
 
         scene.input.on('pointerdown', (pointer: Phaser.Input.Pointer) => 
         {
@@ -56,7 +63,10 @@ export class InputManager
         return { 
             x: velocityX, y: velocityY, 
             fire: this.fireButton, reload: this.keyR.isDown, 
-            inventory: this.keyI.isDown 
+            inventory: this.keyI.isDown,
+            slot1: this.key1.isDown,
+            slot2: this.key2.isDown,
+            slot3: this.key3.isDown,
         };
     }
 }

@@ -27,3 +27,9 @@ export interface ReloadData
     startTime: number;
     endTime: number;
 }
+
+export type Position = 
+{
+    x: number;
+    y: number;
+};

@@ -58,4 +58,7 @@ export interface InputData
     fire: boolean;
     reload: boolean;
     inventory: boolean;
+    slot1: boolean;
+    slot2: boolean;
+    slot3: boolean;
 }

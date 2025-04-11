@@ -1,27 +1,29 @@
-import Phaser from "phaser";
+import Phaser, { GameObjects } from "phaser";
 import { Socket } from "socket.io-client";
 import { InputData, Player } from "./types/Player";
-import { useGameStore } from "./stores/ui";
+import { useGameStore } from "./stores/game-store";
+import MainScene from "./main-scene";
+import { Bullet } from "./entities/Bullet";
 
 export class PlayerController
 {
-    private scene: Phaser.Scene;
+    private scene: MainScene;
     private socket: Socket;
     private player: Player;
-    private speed: number = 3;
-    private bullets: Phaser.GameObjects.Group;
+    private speed: number = 1.8;
     private lastFired: number = 0;
-    private fireRate: number = 500;
+    private fireRate: number = 300;
     private ammo: number = 10;
     private maxAmmo: number = 10;
     private reloadTime: number = 2000;
     private isReloading: boolean = false;
+    private activeWeapon: number = 0;
+    private isDead: boolean = false;
 
-    constructor(scene: Phaser.Scene, socket: Socket, playerObj: Phaser.GameObjects.Rectangle)
+    constructor(scene: MainScene, socket: Socket, playerObj: Phaser.GameObjects.Rectangle)
     {
         this.scene = scene;
         this.socket = socket;
-        this.bullets = this.scene.add.group();
 
         this.player = { player: playerObj, reloadText: undefined };
         this.player.reloadText = this.scene.add.text(
@@ -44,6 +46,8 @@ export class PlayerController
         this.updateRotation(pointer);
         this.movement(input)
         this.shooting(input, time)
+        this.switchingWeapons(input)
+        this.collisions()
     }
 
     movement(input: InputData)
@@ -81,6 +85,45 @@ export class PlayerController
         }
     }
 
+    switchingWeapons(input: InputData)
+    {
+        if (input.slot1) this.activeWeapon = 0;
+        if (input.slot2) this.activeWeapon = 1;
+        if (input.slot3) this.activeWeapon = 2;
+        useGameStore.getState().setActiveWeapon(this.activeWeapon);
+    }
+
+    collisions()
+    {
+        this.scene.bullets.map((bullet) =>
+        {
+            if (Phaser.Geom.Intersects.RectangleToRectangle(
+                bullet.getObject().getBounds(),
+                this.player.player.getBounds(),
+            )) {
+                this.onCollideWithBullet(bullet);
+            }
+        })
+    }
+
+    private onCollideWithBullet(bullet: Bullet)
+    {
+        if (this.isDead) return
+        if (this.socket.id === bullet.getOwnerId()) return
+
+        const health = useGameStore.getState().health;
+        const setHealth = useGameStore.getState().setHealth;
+
+        if (health - 5 > 0)
+        {
+            setHealth(health - 5);
+            return
+        }
+
+        this.isDead = true;
+        this.socket.emit('playerDead', { killerId: bullet.getOwnerId() });
+    }
+
     private updateRotation(pointer: Phaser.Input.Pointer)
     {
         if (!pointer.active) return;
@@ -100,26 +143,12 @@ export class PlayerController
 
     private fire(time: number)
     {
+        if (!this.socket.id) return
+
         const player = this.player.player;
         this.lastFired = time;
         this.setAmmo(this.ammo - 1);
 
-        const bullet = this.scene.add.circle(
-            player.x,
-            player.y,
-            5,
-            0xffff00
-        );
-
-        const velocity = this.scene.physics.velocityFromRotation(
-            player.rotation,
-            300
-        );
-
-        this.scene.physics.add.existing(bullet);
-        (bullet.body as Phaser.Physics.Arcade.Body).setVelocity(velocity.x, velocity.y);
-
-        this.bullets.add(bullet);
         this.socket.emit('playerShoot', 
         {
             x: player.x,
@@ -127,8 +156,6 @@ export class PlayerController
             rotation: player.rotation,
             ammo: this.ammo
         });
-
-        setTimeout(() => {bullet.destroy();}, 1500);
     }
 
     private startReload(time: number)
@@ -155,5 +182,12 @@ export class PlayerController
     { 
         this.ammo = ammo; 
         useGameStore.getState().setAmmo(ammo);
+    }
+
+    respawn(x: number, y: number)
+    {
+        this.player.player.setPosition(x, y)
+        useGameStore.getState().setHealth(100);
+        this.isDead = false;
     }
 }

@@ -2,7 +2,12 @@ import io, { Socket } from "socket.io-client";
 import { InputManager } from "./input-manager";
 import { Player, PlayerData, PlayerMovementData, Players, PlayerShootEvent } from "./types/Player";
 import { PlayerController } from "./player-controller";
+import { useGameStore } from "./stores/game-store";
+import { useMapDataStore } from "./stores/map-data-store";
+import { Bullet } from "./entities/Bullet";
+import { PlayerDeadEvent } from "./types/events/player-events";
 
+///@ts-ignore
 const SERVER_IP = import.meta.env.VITE_SERVER_IP;
 
 class MainScene extends Phaser.Scene
@@ -14,6 +19,8 @@ class MainScene extends Phaser.Scene
     private inputManager!: InputManager;
     private playerController!: PlayerController;
     private pointer!: Phaser.Input.Pointer;
+
+    bullets!: Bullet[];
 
     constructor()
     {
@@ -30,6 +37,7 @@ class MainScene extends Phaser.Scene
         this.socket = io(SERVER_IP);
         this.inputManager = new InputManager(this);
         this.pointer = this.input.activePointer;
+        this.bullets = [];
 
         this.socket.on('currentPlayers', (players: Record<string, PlayerData>) =>
         {
@@ -80,14 +88,14 @@ class MainScene extends Phaser.Scene
 
         this.socket.on('playerShoot', (data: PlayerShootEvent) => 
         {
-            const player = this.otherPlayers[data.id];
-            if (!player) return
+            const bullet = new Bullet(this, data.id, data.x, data.y, data.rotation);
+            this.bullets.push(bullet);
 
-            const bullet = this.add.circle(data.x, data.y, 5, 0xffff00);
-            const velocity = this.physics.velocityFromRotation(data.rotation, 300);
-            this.physics.add.existing(bullet);
-            (bullet.body as Phaser.Physics.Arcade.Body).setVelocity(velocity.x, velocity.y);
-            setTimeout(() => {bullet.destroy();}, 1500);
+            setTimeout(() => 
+            {
+                this.bullets = this.bullets.filter(b => b != bullet)
+                bullet.destroy();
+            }, 1500);
         });
 
         this.socket.on('playerReload', (playerId: string) => 
@@ -106,6 +114,25 @@ class MainScene extends Phaser.Scene
         {
             const player = this.otherPlayers[playerId];
             if (player && player.reloadText) player.reloadText.setVisible(false);
+        });
+
+        this.socket.on('playerDead', (data: PlayerDeadEvent) => 
+        {
+            console.log(data);
+            const state = useGameStore.getState();
+            useMapDataStore.getState().newAction(
+                `${data.name} was killed by ${data.killerName}`
+            );
+
+            
+            if (data.killerId === this.socket.id)
+            {
+                state.setKills(state.kills + 1);
+                return
+            }
+
+            this.playerController.respawn(data.x, data.y);
+            state.setDeaths(state.deaths + 1);
         });
     }
 

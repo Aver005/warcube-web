@@ -1,5 +1,10 @@
 @import "tailwindcss";
 
+*
+{
+    overflow: hidden;
+}
+
 body 
 { 
     display: flex;
@@ -15,12 +20,14 @@ body
 main
 {
     position: relative;
-    border: 1px solid #333;
-    border-radius: 1em;
-    padding: 2px;
 }
 
-canvas { display: block; }
+canvas 
+{ 
+    display: block;
+    width: 100vw;
+    height: 100vh;
+}
 
 #ui 
 {
