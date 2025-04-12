@@ -4,6 +4,7 @@ import { InputData, Player } from "./types/Player";
 import { useGameStore } from "./stores/game-store";
 import MainScene from "./main-scene";
 import { Bullet } from "./entities/Bullet";
+import { usePlayerStore } from "./stores/player-store";
 
 export class PlayerController
 {
@@ -47,7 +48,7 @@ export class PlayerController
         this.movement(input)
         this.shooting(input, time)
         this.switchingWeapons(input)
-        this.collisions()
+        this.collisions(input)
     }
 
     movement(input: InputData)
@@ -58,6 +59,7 @@ export class PlayerController
             const newX = player.x + input.x * this.speed;
             const newY = player.y + input.y * this.speed;
             player.setPosition(newX, newY);
+            usePlayerStore.getState().setPosition(newX, newY);
         }
 
         this.socket.emit('playerMovement',
@@ -93,7 +95,7 @@ export class PlayerController
         useGameStore.getState().setActiveWeapon(this.activeWeapon);
     }
 
-    collisions()
+    collisions(input: InputData)
     {
         this.scene.bullets.map((bullet) =>
         {
@@ -104,6 +106,22 @@ export class PlayerController
                 this.onCollideWithBullet(bullet);
             }
         })
+
+        if (input.pickup)
+        {
+            this.scene.itemsOnGround.map((item) =>
+            {
+                if (!Phaser.Geom.Intersects.RectangleToRectangle(
+                    item.object.getBounds(),
+                    this.player.player.getBounds(),
+                )) 
+                return
+
+                this.scene.itemsOnGround.splice(this.scene.itemsOnGround.indexOf(item), 1);
+                item.object.destroy();
+                this.socket.emit('playerPickupItem', item.id);
+            })
+        }
     }
 
     private onCollideWithBullet(bullet: Bullet)

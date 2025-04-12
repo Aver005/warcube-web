@@ -6,6 +6,9 @@ import { useGameStore } from "./stores/game-store";
 import { useMapDataStore } from "./stores/map-data-store";
 import { Bullet } from "./entities/Bullet";
 import { PlayerDeadEvent } from "./types/events/player-events";
+import { useNetworkStore } from "./stores/network-store";
+import { InitEvent } from "./types/events/server-events";
+import { Item, ItemOnGround } from "./types/items";
 
 ///@ts-ignore
 const SERVER_IP = import.meta.env.VITE_SERVER_IP;
@@ -19,8 +22,10 @@ class MainScene extends Phaser.Scene
     private inputManager!: InputManager;
     private playerController!: PlayerController;
     private pointer!: Phaser.Input.Pointer;
+    private camera!: Phaser.Cameras.Scene2D.Camera;
 
     bullets!: Bullet[];
+    itemsOnGround: ItemOnGround[] = [];
 
     constructor()
     {
@@ -39,9 +44,12 @@ class MainScene extends Phaser.Scene
         this.pointer = this.input.activePointer;
         this.bullets = [];
 
-        this.socket.on('currentPlayers', (players: Record<string, PlayerData>) =>
+        this.socket.on('connect', () => useNetworkStore.getState().setSocket(this.socket));
+
+        this.socket.on('init', (data: InitEvent) =>
         {
-            Object.entries(players).forEach(([id, playerData]) =>
+            data.itemsOnGround.map((item) => this.spawnItem(item));
+            Object.entries(data.players).forEach(([id, playerData]) =>
             {
                 if (!this.socket || this.socket === null) return;
 
@@ -53,6 +61,7 @@ class MainScene extends Phaser.Scene
 
                 this.addOtherPlayers(playerData);
             });
+
         });
 
         this.socket.on('newPlayer', (playerData: PlayerData) =>
@@ -134,13 +143,38 @@ class MainScene extends Phaser.Scene
             this.playerController.respawn(data.x, data.y);
             state.setDeaths(state.deaths + 1);
         });
+
+        this.socket.on('playerPickupItem', (itemId: number) => 
+        {
+            const item = this.itemsOnGround.find((i) => i.id === itemId);
+            console.log(itemId, this.itemsOnGround, item)
+            if (!item) return
+
+            this.itemsOnGround.splice(this.itemsOnGround.indexOf(item), 1);
+            item.object.destroy();
+        });
+    }
+
+    setupCamera()
+    {
+        if (!this.player) return
+        // Настройка камеры
+        this.camera = this.cameras.main;
+        this.camera.setBounds(0, 0, 4000, 4000); // Границы камеры = размер карты
+        this.camera.startFollow(this.player); // Камера следует за игроком
+        
+        // Дополнительные настройки камеры (опционально)
+        this.camera.setZoom(1); // Увеличение
+        this.camera.setDeadzone(100, 100); // Зона, при выходе за которую камера начинает двигаться
+        this.camera.setLerp(0.1, 0.1); // Плавность движения камеры
+        this.camera.followOffset.set(0, -50); // Смещение камеры относительно игрока
     }
 
     update(time: number)
     {
         if (!this.player || !this.socket) return;
 
-        const input = this.inputManager.getMovement();
+        const input = this.inputManager.getInputs();
         this.playerController.update(input, this.pointer, time);
     }
 
@@ -148,6 +182,7 @@ class MainScene extends Phaser.Scene
     {
         this.player = this.add.rectangle(playerData.x, playerData.y, 32, 32, 0x00ff00).setOrigin(0.5);
         this.playerController = new PlayerController(this, this.socket, this.player);
+        this.setupCamera();
     }
 
     addOtherPlayers(playerData: PlayerData) 
@@ -164,6 +199,14 @@ class MainScene extends Phaser.Scene
             { fontSize: '12px', color: '#ff0000' }
         ).setOrigin(0.5);
         this.otherPlayers[playerData.id] = otherPlayer;
+    }
+
+    spawnItem(item: Item)
+    {
+        const object = this.add.rectangle(
+            item.position.x, item.position.y, 16, 16, 0xffffff
+        ).setOrigin(0.5);
+        this.itemsOnGround.push({ ...item, object });
     }
 }
 

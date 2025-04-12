@@ -7,13 +7,13 @@ export function getRandomPositions(
     yMax: number = 720
 ): Position
 {
-    const getRandomCoordinate = (min: number, max: number): number =>
-    {
-        return Math.floor(Math.random() * (max - min + 1)) + min;
-    };
-    
+   
     return {
-        x: getRandomCoordinate(xMin, xMax),
-        y: getRandomCoordinate(yMin, yMax)
+        x: getRandomInt(xMin, xMax),
+        y: getRandomInt(yMin, yMax)
     };
 }
+
+export const getRandomInt = (min: number, max: number) => {
+    return Math.floor(Math.random() * (max - min + 1)) + min;
+};
