@@ -3,20 +3,26 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { OverlayType, useUIStore } from '@/stores/ui-store';
-import { Play, Settings, User, LogOut, Menu, X } from 'lucide-react';
+import { Play, Settings, User, LogOut, Menu, X, ServerIcon, UserCircle2 } from 'lucide-react';
+import { Dialog } from './dialog';
+import { useNetworkStore } from '@/stores/network-store';
+import { ConfirmDialog } from './confirmation-dialog';
 
-// Варианты анимации
-const overlayVariants = {
+const overlayVariants = 
+{
     hidden: { opacity: 0 },
     visible: { opacity: 1 }
 };
 
-const menuVariants = {
+const menuVariants = 
+{
     hidden: { opacity: 0, x: 100 },
-    visible: {
+    visible: 
+    {
         opacity: 1,
         x: 0,
-        transition: {
+        transition: 
+        {
             duration: 0.5,
             ease: [0.22, 1, 0.36, 1],
             staggerChildren: 0.1,
@@ -26,7 +32,8 @@ const menuVariants = {
     exit: { opacity: 0, x: 100 }
 };
 
-const itemVariants = {
+const itemVariants = 
+{
     hidden: { opacity: 0, y: "20%" },
     visible: { opacity: 1, y: 0 },
     hover: { x: -8 }
@@ -34,16 +41,22 @@ const itemVariants = {
 
 const PauseMenu: React.FC = () =>
 {
+    const { socket, scene } = useNetworkStore();
     const { setOverlayWindow } = useUIStore();
+
     const [hoveredItem, setHoveredItem] = useState<number | null>(null);
+    const [isConnectOpened, setConnectOpened] = useState(false);
+    const [isExitOpened, setExitOpened] = useState(false);
+
     const onClose = () => setOverlayWindow(OverlayType.NONE);
 
     const menuItems = 
     [
         { id: 1, label: "Continue", icon: <Play className="w-5 h-5" />, action: onClose },
-        { id: 2, label: "Settings", icon: <Settings className="w-5 h-5" />, action: () => console.log("Settings") },
-        { id: 3, label: "Profile", icon: <User className="w-5 h-5" />, action: () => console.log("Profile") },
-        { id: 4, label: "Exit", icon: <LogOut className="w-5 h-5" />, action: () => console.log("Exit") }
+        { id: 2, label: "Connect", icon: <ServerIcon className="w-5 h-5" />, action: () => setConnectOpened(true) },
+        { id: 3, label: "Settings", icon: <Settings className="w-5 h-5" />, action: () => console.log("Settings") },
+        { id: 4, label: "Profile", icon: <User className="w-5 h-5" />, action: () => console.log("Profile") },
+        { id: 5, label: "Exit", icon: <LogOut className="w-5 h-5" />, action: () => setExitOpened(true) },
     ];
 
     return (
@@ -59,6 +72,47 @@ const PauseMenu: React.FC = () =>
                 <motion.div
                     className="absolute inset-0 bg-black/70 backdrop-blur-sm"
                     onClick={onClose}
+                />
+
+                <Dialog
+                    isOpen={isConnectOpened}
+                    onClose={() => { setConnectOpened(false); onClose(); }}
+                    title="Адрес сервера"
+                    placeholder="IP (например, 127.0.0.1:3301)"
+                    successMessage="Соединение установлено!"
+                    submitText="Подключиться"
+                    maxLength={32}
+                    icon={ServerIcon}
+                    initialValue={'127.0.0.1:3000'}
+                    validation={(value) => 
+                    {
+                        if (!value.trim()) return 'IP не может быть пустым'
+                        if (value.length > 32) return 'IP не может быть длиннее - 32 символов'
+                        return null
+                    }}
+                    onSubmit={async (value) => 
+                    {
+                        if (socket) socket.disconnect()
+                        if (!scene) return { success: false, message: 'Сцена не найдена' }
+                        scene.connect(value)
+                        return { success: true }
+                    }}
+                />
+
+                <ConfirmDialog 
+                    isOpen={isExitOpened}
+                    onClose={() => { setExitOpened(false); onClose(); }}
+                    title="Вы уверены?"
+                    description="Вы уверены, что хотите выйти из матча?"
+                    icon={UserCircle2}
+                    confirmText="Да"
+                    cancelText="Нет"
+                    onConfirm={async () => 
+                    {
+                        if (!scene) return { success: false, message: 'Сцена не найдена' }
+                        scene.disconnect()
+                        return { success: true }
+                    }}
                 />
 
                 {/* Основное меню */}

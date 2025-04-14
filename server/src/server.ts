@@ -197,7 +197,10 @@ io.on('connection', (socket: Socket) =>
     });
 });
 
-const PORT = process.env.PORT || 3000;
+const args = process.argv.slice(2);
+const portArg = args.find(arg => arg.startsWith('--port='));
+const PORT = portArg ? parseInt(portArg.split('=')[1]) : process.env.PORT || 3000;
+
 server.listen(PORT, () =>
 {
     console.log(`Server listening on port ${PORT}`);

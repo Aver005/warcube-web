@@ -1,3 +1,4 @@
+import { Player } from '@/entities/Player';
 import { GameObjects } from 'phaser';
 
 export interface PlayerData
@@ -30,15 +31,18 @@ export interface ReloadData
     endTime: number;
 }
 
-export interface Player
-{
-    player: GameObjects.Rectangle
-    reloadText?: Phaser.GameObjects.Text
-}
+// export interface Player
+// {
+//     player: GameObjects.Image
+//     reloadText?: Phaser.GameObjects.Text
+// }
 
 export type Players = 
 {
-    [id: string]: Player;
+    [id: string]: {
+        player: GameObjects.Image
+        reloadText?: Phaser.GameObjects.Text
+    };
 };
 
 

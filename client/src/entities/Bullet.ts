@@ -1,31 +1,47 @@
 import MainScene from "@/main-scene";
+import { GameObjects, Physics } from "phaser";
 
-export class Bullet
+const { Arc } = GameObjects;
+type Body = Physics.Arcade.Body;
+
+export class Bullet extends Arc
 {
-    private _object!: Phaser.GameObjects.Arc;
-    private _ownerId!: string; 
+    private ownerId!: string;
+    private damage: number = 12;
 
     constructor(scene: MainScene, ownerId: string, x?: number, y?: number, rotation: number = 0)
     {
-        this._ownerId = ownerId;
-        this._object = scene.add.circle(x, y, 5, 0xffff00);
+        super(scene, x, y, 5, 0, 360, false, 0xFFFF00);
+        this.ownerId = ownerId;
+
         const velocity = scene.physics.velocityFromRotation(rotation, 1000);
-        scene.physics.add.existing(this._object);
-        (this._object.body as Phaser.Physics.Arcade.Body).setVelocity(velocity.x, velocity.y);
+        scene.add.existing(this);
+        scene.physics.add.existing(this);
+
+        const body = this.body as Body;
+        body.setVelocity(velocity.x, velocity.y);
+        body.setCollideWorldBounds(true);
+        body.onWorldBounds = true;
+
+        scene.physics.world.on("worldbounds", 
+            (collider: Body) => this.onWorldBounds(collider)
+        );
     }
 
-    destroy()
+    onWorldBounds(collider: Body)
     {
-        this._object.destroy()
-    }
-
-    getObject()
-    {
-        return this._object;
+        const body = this.body as Body;
+        if (body !== collider) return
+        this.destroy();
     }
 
     getOwnerId() 
     {
-        return this._ownerId
+        return this.ownerId
+    }
+
+    getDamage() 
+    {
+        return this.damage
     }
 }

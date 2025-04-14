@@ -1,7 +1,6 @@
 import io, { Socket } from "socket.io-client";
 import { InputManager } from "./input-manager";
-import { Player, PlayerData, PlayerMovementData, Players, PlayerShootEvent } from "./types/Player";
-import { PlayerController } from "./player-controller";
+import { InputData, PlayerData, PlayerMovementData, PlayerShootEvent } from "./types/Player";
 import { useGameStore } from "./stores/game-store";
 import { useMapDataStore } from "./stores/map-data-store";
 import { Bullet } from "./entities/Bullet";
@@ -9,6 +8,8 @@ import { PlayerDeadEvent } from "./types/events/player-events";
 import { useNetworkStore } from "./stores/network-store";
 import { InitEvent } from "./types/events/server-events";
 import { Item, ItemOnGround } from "./types/items";
+import { Player } from "./entities/Player";
+import { GroundItem } from "./entities/GroundItem";
 
 ///@ts-ignore
 const SERVER_IP = import.meta.env.VITE_SERVER_IP;
@@ -16,16 +17,15 @@ const SERVER_IP = import.meta.env.VITE_SERVER_IP;
 class MainScene extends Phaser.Scene
 {
     socket!: Socket;
-    player: Phaser.GameObjects.Rectangle | null = null;
-    otherPlayers: Players = {};
+    player: Player | null = null;
 
     private inputManager!: InputManager;
-    private playerController!: PlayerController;
-    private pointer!: Phaser.Input.Pointer;
     private camera!: Phaser.Cameras.Scene2D.Camera;
 
-    bullets!: Bullet[];
-    itemsOnGround: ItemOnGround[] = [];
+    bullets!: Phaser.GameObjects.Group;
+    players!: Phaser.GameObjects.Group;
+    itemsOnGround!: Phaser.GameObjects.Group;
+
 
     constructor()
     {
@@ -34,125 +34,154 @@ class MainScene extends Phaser.Scene
 
     preload()
     {
-
+        this.load.image('player', './player.png');
+        this.load.image('item', './item.png');
     }
 
     create()
     {
-        this.socket = io(SERVER_IP);
         this.inputManager = new InputManager(this);
-        this.pointer = this.input.activePointer;
-        this.bullets = [];
+        useNetworkStore.getState().setScene(this);
+        this.connect();
+    }
 
+    connect(forceIP?: string)
+    {
+        const IP = forceIP || SERVER_IP;
+        this.socket = io(IP);
+
+        this.bullets = this.add.group();
+        this.players = this.add.group();
+        this.itemsOnGround = this.add.group();
+
+        this.physics.add.overlap(
+            this.bullets,
+            this.players,
+            (bullet, player) => 
+            {
+                if (!(bullet instanceof Bullet)) return;
+                if (!(player instanceof Player)) return;
+                if (bullet.getOwnerId() === player.id) return;
+                player.onCollideWithBullet(bullet);
+            }
+        );
+
+        this.physics.add.overlap(
+            this.itemsOnGround,
+            this.players,
+            (item, player) => 
+            {
+                if (!(item instanceof GroundItem)) return;
+                if (!(player instanceof Player)) return;
+                player.onCollideWithItem(item);
+            }
+        );
+
+        this.listeners();
+    }
+
+    disconnect()
+    {
+        if (this.socket) this.socket.disconnect();
+        this.clenup();
+    }
+
+    clenup()
+    {
+        this.bullets.destroy(true, true);
+        this.players.destroy(true, true);
+        this.itemsOnGround.destroy(true, true);
+    }
+
+    listeners()
+    {
         this.socket.on('connect', () => useNetworkStore.getState().setSocket(this.socket));
-
         this.socket.on('init', (data: InitEvent) =>
         {
             data.itemsOnGround.map((item) => this.spawnItem(item));
             Object.entries(data.players).forEach(([id, playerData]) =>
             {
                 if (!this.socket || this.socket === null) return;
-
-                if (id === this.socket.id)
-                {
-                    this.addPlayer(playerData);
-                    return
-                } 
-
-                this.addOtherPlayers(playerData);
+                const newPlayer = this.addPlayer(playerData);
+                if (id !== this.socket.id) return;
+                this.player = newPlayer;
+                this.setupCamera();
             });
-
         });
 
         this.socket.on('newPlayer', (playerData: PlayerData) =>
         {
-            this.addOtherPlayers(playerData);
+            this.addPlayer(playerData);
         });
 
         this.socket.on('playerDisconnected', (playerId: string) =>
         {
-            if (this.otherPlayers[playerId])
+            this.players.children.entries.map((player) =>
             {
-                this.otherPlayers[playerId].player.destroy();
-                this.otherPlayers[playerId].reloadText?.destroy();
-                delete this.otherPlayers[playerId];
-            }
+                if (!(player instanceof Player)) return;
+                if (player.id !== playerId) return
+                player.destroy();
+            });
         });
 
         this.socket.on('playerMoved', (data: PlayerMovementData) => 
         {
-            const player = this.otherPlayers[data.id];
-            if (player) 
-            {
-                player.player.setPosition(data.x, data.y);
-                player.player.rotation = data.rotation;
-
-                if (player.reloadText) 
-                {
-                    player.reloadText.setVisible(data.isReloading || false);
-                    player.reloadText.setPosition(data.x, data.y - 40);
-                }
-            }
+            const players = this.players.getMatching('id', data.id);
+            if (players.length === 0) return
+            const player = players[0] as Player;
+            player.setPosition(data.x, data.y);
+            player.rotation = data.rotation;
         });
 
         this.socket.on('playerShoot', (data: PlayerShootEvent) => 
         {
             const bullet = new Bullet(this, data.id, data.x, data.y, data.rotation);
-            this.bullets.push(bullet);
-
-            setTimeout(() => 
-            {
-                this.bullets = this.bullets.filter(b => b != bullet)
-                bullet.destroy();
-            }, 1500);
+            this.bullets.add(bullet);
         });
 
         this.socket.on('playerReload', (playerId: string) => 
         {
-            const player = this.otherPlayers[playerId];
-            if (!player) return
-            
-            if (!player.reloadText)
-                player.reloadText = this.add.text(0, -40, 'Reloading...', { fontSize: '12px', color: '#ffffff' })
-                    .setOrigin(0.5);
-            
-            player.reloadText.setVisible(true);
+            const players = this.players.getMatching('id', playerId);
+            if (players.length === 0) return
+            const player = players[0] as Player;
+            player.setReloadTextVisible(true);
         });
 
         this.socket.on('playerReloadComplete', (playerId: string) => 
         {
-            const player = this.otherPlayers[playerId];
-            if (player && player.reloadText) player.reloadText.setVisible(false);
+            const players = this.players.getMatching('id', playerId);
+            if (players.length === 0) return
+            const player = players[0] as Player;
+            player.setReloadTextVisible(false);
         });
 
         this.socket.on('playerDead', (data: PlayerDeadEvent) => 
         {
-            console.log(data);
             const state = useGameStore.getState();
             useMapDataStore.getState().newAction(
                 `${data.name} was killed by ${data.killerName}`
             );
 
-            
             if (data.killerId === this.socket.id)
             {
                 state.setKills(state.kills + 1);
                 return
             }
 
-            this.playerController.respawn(data.x, data.y);
+            if (!this.player) return;
+            this.player.respawn(data.x, data.y);
             state.setDeaths(state.deaths + 1);
         });
 
         this.socket.on('playerPickupItem', (itemId: number) => 
         {
-            const item = this.itemsOnGround.find((i) => i.id === itemId);
-            console.log(itemId, this.itemsOnGround, item)
-            if (!item) return
-
-            this.itemsOnGround.splice(this.itemsOnGround.indexOf(item), 1);
-            item.object.destroy();
+            const items = this.itemsOnGround.getMatching('id', itemId);
+            if (items.length === 0) return
+            const item = items[0] as Player;
+            item.destroy();
         });
+
+        this.socket.on('disconnect', () => this.clenup());
     }
 
     setupCamera()
@@ -170,44 +199,21 @@ class MainScene extends Phaser.Scene
         this.camera.followOffset.set(0, -50); // Смещение камеры относительно игрока
     }
 
-    update(time: number)
+    addPlayer(playerData: PlayerData) 
     {
-        if (!this.player || !this.socket) return;
-
-        const input = this.inputManager.getInputs();
-        this.playerController.update(input, this.pointer, time);
-    }
-
-    addPlayer(playerData: PlayerData)
-    {
-        this.player = this.add.rectangle(playerData.x, playerData.y, 32, 32, 0x00ff00).setOrigin(0.5);
-        this.playerController = new PlayerController(this, this.socket, this.player);
-        this.setupCamera();
-    }
-
-    addOtherPlayers(playerData: PlayerData) 
-    {
-        const otherPlayer = { player: undefined, reloadText: undefined } as any;
-        otherPlayer.player = this.add.rectangle(
-            playerData.x, 
-            playerData.y, 
-            32, 32, 0xff0000
-        ).setOrigin(0.5);
-        otherPlayer.reloadText = this.add.text(
-            playerData.x, playerData.y - 40, 
-            'Reloading...', 
-            { fontSize: '12px', color: '#ff0000' }
-        ).setOrigin(0.5);
-        this.otherPlayers[playerData.id] = otherPlayer;
+        const newPlayer = new Player(this, playerData.id, 'player', playerData.x, playerData.y);
+        this.players.add(newPlayer)
+        return newPlayer;
     }
 
     spawnItem(item: Item)
     {
-        const object = this.add.rectangle(
-            item.position.x, item.position.y, 16, 16, 0xffffff
-        ).setOrigin(0.5);
-        this.itemsOnGround.push({ ...item, object });
+        this.itemsOnGround.add(
+            new GroundItem(this, item.id, item.position.x, item.position.y, 'item')
+        );
     }
+
+    getInput(): InputData { return this.inputManager.getInputs(); }
 }
 
 export default MainScene

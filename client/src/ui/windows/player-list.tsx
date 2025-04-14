@@ -12,14 +12,15 @@ import
     VoteIcon,
     UserCircle2Icon,
     UserXIcon,
-    ShieldIcon
+    ShieldIcon,
+    UserCircle2
 } from 'lucide-react';
 import React from 'react';
 import PlayerProfile from './player-profile';
 import { useUIStore } from '@/stores/ui-store';
 import { AnimatePresence, motion } from 'framer-motion';
-import { ChangeNameModal } from './change-name';
 import { useNetworkStore } from '@/stores/network-store';
+import { Dialog } from './dialog';
 
 export interface Player
 {
@@ -52,6 +53,7 @@ interface MatchInfo
 
 const PlayerList: React.FC = () =>
 {
+    const { socket } = useNetworkStore();
     const { toggleOverlayHold } = useUIStore();
 
     const [matchInfo] = useState<MatchInfo>({
@@ -253,16 +255,39 @@ const PlayerList: React.FC = () =>
                 />
             )}
 
-            <ChangeNameModal 
+            <Dialog
                 isOpen={isNameModalOpen}
                 onClose={() => setIsNameModalOpen(false)}
+                title="Смена имени"
+                placeholder="Введите новое имя"
+                maxLength={16}
+                icon={UserCircle2}
+                initialValue={''}
+                validation={(value) => 
+                {
+                    if (!value.trim()) return 'Имя не может быть пустым'
+                    if (value.length > 16) return 'Максимальная длина имени - 16 символов'
+                    return null
+                }}
+                onSubmit={async (newName) => 
+                {
+                    if (!socket || socket === null || socket.disconnected) 
+                        return { success: false, message: 'Ошибка соединения' }
+
+                    return new Promise((resolve) => 
+                    {
+                        socket.emit('playerRename', newName, (response: { success: boolean, message?: string }) => {
+                            resolve(response)
+                        })
+                    })
+                }}
             />
 
             <motion.div
                 initial={{ scale: 0.95, opacity: 0 }}
                 animate={{ scale: 1, opacity: 1 }}
                 exit={{ scale: 0.95, opacity: 0 }}
-                transition={{ type: 'spring', damping: 20 }}
+                transition={{ type: 'spring', damping: 20, duration: 0.1 }}
                 className="bg-gray-900 bg-opacity-90 rounded-lg w-4/5 h-4/5 flex overflow-hidden"
             >
                 {/* Левая часть - Карта */}
@@ -363,7 +388,7 @@ const PlayerList: React.FC = () =>
                 <motion.div
                     initial={{ x: 20, opacity: 0 }}
                     animate={{ x: 0, opacity: 1 }}
-                    transition={{ delay: 0.1 }}
+                    transition={{ duration: 0.1 }}
                     className="relative w-3/5 bg-gray-800 bg-opacity-70 p-4 overflow-y-auto"
                 >
                     {/* Заголовки столбцов */}
@@ -395,7 +420,7 @@ const PlayerList: React.FC = () =>
                                 key={player.id}
                                 initial={{ opacity: 0, y: 10 }}
                                 animate={{ opacity: 1, y: 0 }}
-                                transition={{ delay: 0.3 + index * 0.03 }}
+                                transition={{ delay: 0.1 + index * 0.03, duration: 0.2 }}
                                 whileTap={{ scale: 0.98 }}
                                 onClick={() => handleSelectPlayer(player)}
                                 className={`grid grid-cols-12 gap-2 p-2 px-4 rounded-md group

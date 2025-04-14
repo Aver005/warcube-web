@@ -1,41 +1,66 @@
 import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { CheckCircle2, Loader2, XCircle, UserCircle2 } from 'lucide-react'
+import { CheckCircle2, Loader2, XCircle, UserCircle2, LucideIcon } from 'lucide-react'
 import React from 'react'
-import { useNetworkStore } from '@/stores/network-store'
 
-interface ChangeNameModalProps
+interface DialogProps
 {
     isOpen: boolean
     onClose: () => void
+    title: string
+    initialValue?: string
+    maxLength?: number
+    placeholder?: string
+    validation?: (value: string) => string | null
+    onSubmit: (value: string) => Promise<{ success: boolean; message?: string }>
+    successMessage?: string
+    icon?: LucideIcon
+    inputType?: 'text' | 'password' | 'email' | 'number'
+    cancelText?: string
+    submitText?: string
+    allowKeyboardInput?: boolean
+    children?: React.ReactNode
 }
 
-export const ChangeNameModal = ({ isOpen, onClose }: ChangeNameModalProps) =>
+export const Dialog = ({
+    isOpen,
+    onClose,
+    title,
+    initialValue = '',
+    maxLength = 16,
+    placeholder = '',
+    validation,
+    onSubmit,
+    successMessage = 'Изменения успешно сохранены!',
+    icon: Icon = UserCircle2,
+    inputType = 'text',
+    cancelText = 'Отмена',
+    submitText = 'Сохранить',
+    allowKeyboardInput = true,
+    children,
+}: DialogProps) =>
 {
-    const { socket } = useNetworkStore();
-    const [newName, setNewName] = useState('')
+    const [value, setValue] = useState(initialValue)
     const [isLoading, setIsLoading] = useState(false)
     const [success, setSuccess] = useState(false)
     const [error, setError] = useState('')
 
-    const handleSave = async () => 
+    const handleSubmit = async () =>
     {
-        if (!newName.trim()) 
+        if (!value.trim())
         {
-            setError('Имя не может быть пустым')
+            setError('Поле не может быть пустым')
             return
         }
 
-        if (newName.length > 16)
+        if (validation)
         {
-            setError('Максимальная длина имени - 16 символов')
-            return
-        }
-
-        if (!socket || socket === null || socket.disconnected)
-        {
-            setError('Ошибка соединения')
-            return
+            const validationError = validation(value)
+            if (validationError)
+            {
+                setError(validationError)
+                return
+            }
         }
 
         setIsLoading(true)
@@ -43,61 +68,64 @@ export const ChangeNameModal = ({ isOpen, onClose }: ChangeNameModalProps) =>
 
         try
         {
-            socket.emit('playerRename', newName, (response: { success: boolean, message?: string }) =>
+            const response = await onSubmit(value)
+            if (response.success)
             {
-                if (response.success)
+                setSuccess(true)
+                setTimeout(() =>
                 {
-                    setSuccess(true)
-                    setTimeout(() =>
-                    {
-                        setSuccess(false)
-                        setIsLoading(false)
-                        onClose()
-                        setNewName('')
-                    }, 1500)
-                } 
-                else
-                {
-                    setError(response.message || 'Это имя уже занято')
+                    setSuccess(false)
                     setIsLoading(false)
-                }
-            })
-        } 
-        catch (err)
+                    onClose()
+                    setValue(initialValue)
+                }, 1500)
+            } else
+            {
+                setError(response.message || 'Произошла ошибка')
+                setIsLoading(false)
+            }
+        } catch (err)
         {
             setError('Ошибка соединения')
             setIsLoading(false)
         }
     }
 
-    const handleChange = (e: React.KeyboardEvent) => 
+    const handleChange = (e: React.ChangeEvent<HTMLInputElement>) =>
+    {
+        setValue(e.target.value)
+        if (error) setError('')
+    }
+
+    const handleKeyDown = (e: React.KeyboardEvent) =>
     {
         if (e.key === 'Enter')
         {
-            handleSave()
+            handleSubmit()
             return
         }
-        
+
+        if (!allowKeyboardInput) return
+
         if (e.key === 'Backspace')
         {
-            setNewName(prev => prev.slice(0, -1))
+            setValue(prev => prev.slice(0, -1))
             return
         }
 
         if (e.key.length > 1) return
-        setNewName(prev => prev + e.key)
+        setValue(prev => prev + e.key)
     }
 
     useEffect(() =>
     {
         if (!isOpen)
         {
-            setNewName('')
+            setValue(initialValue)
             setError('')
             setSuccess(false)
         }
-    }, 
-    [isOpen])
+    }, [isOpen, initialValue])
 
     return (
         <AnimatePresence>
@@ -130,43 +158,45 @@ export const ChangeNameModal = ({ isOpen, onClose }: ChangeNameModalProps) =>
                                 >
                                     <CheckCircle2 className="w-12 h-12 text-green-500 mx-auto" />
                                 </motion.div>
-                                <h3 className="text-xl font-semibold text-white">Имя изменено!</h3>
-                                <p className="text-gray-400">Новое имя успешно сохранено</p>
+                                <h3 className="text-xl font-semibold text-white">Успех!</h3>
+                                <p className="text-gray-400">{successMessage}</p>
                             </motion.div>
                         ) : (
                             <>
                                 <div className="flex items-center justify-between mb-4">
                                     <h3 className="text-xl font-semibold text-white flex items-center gap-2">
-                                        <UserCircle2 className="w  -5 h-5" />
-                                        Смена имени
+                                        <Icon className="w-5 h-5" />
+                                        {title}
                                     </h3>
                                     <button
                                         onClick={onClose}
                                         className="text-gray-400 hover:text-white transition-colors"
+                                        disabled={isLoading}
                                     >
                                         <XCircle className="w-5 h-5" />
                                     </button>
                                 </div>
 
                                 <div className="space-y-4">
-                                    <div>
-                                        <label htmlFor="username" className="block text-sm font-medium text-gray-300 mb-1">
-                                            Новое имя
-                                        </label>
-                                        <input
-                                            id="username"
-                                            type="text"
-                                            value={newName}
-                                            // onChange={(e) => setNewName(e.target.value)}
-                                            className="w-full bg-gray-700 rounded-lg px-4 py-2 text-white border border-gray-700 focus:border-white outline-none transition"
-                                            placeholder="Введите новое имя"
-                                            maxLength={16}
-                                            onKeyDown={handleChange}
-                                        />
-                                        <p className="text-xs text-gray-400 mt-1">
-                                            Допустимые символы: буквы, цифры, _ (макс. 16 символов)
-                                        </p>
-                                    </div>
+                                    {children || (
+                                        <div>
+                                            <label htmlFor="modal-input" className="block text-sm font-medium text-gray-300 mb-1">
+                                                {placeholder}
+                                            </label>
+                                            <input
+                                                id="modal-input"
+                                                type={inputType}
+                                                value={value}
+                                                onChange={handleChange}
+                                                onKeyDown={handleKeyDown}
+                                                className="w-full bg-gray-700 rounded-lg px-4 py-2 text-white border border-gray-700 focus:border-white outline-none transition"
+                                                placeholder={placeholder}
+                                                maxLength={maxLength}
+                                                disabled={isLoading}
+                                                autoFocus
+                                            />
+                                        </div>
+                                    )}
 
                                     {error && (
                                         <motion.div
@@ -186,17 +216,17 @@ export const ChangeNameModal = ({ isOpen, onClose }: ChangeNameModalProps) =>
                                             disabled={isLoading}
                                             className="px-4 py-2 rounded-lg text-gray-300 hover:text-white hover:bg-gray-700 transition-colors disabled:opacity-50"
                                         >
-                                            Отмена
+                                            {cancelText}
                                         </button>
                                         <button
-                                            onClick={handleSave}
+                                            onClick={handleSubmit}
                                             disabled={isLoading}
                                             className="px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-medium disabled:bg-blue-600/50 transition-colors flex items-center justify-center gap-2 min-w-24"
                                         >
                                             {isLoading ? (
                                                 <Loader2 className="w-4 h-4 animate-spin" />
                                             ) : (
-                                                'Сохранить'
+                                                submitText
                                             )}
                                         </button>
                                     </div>
