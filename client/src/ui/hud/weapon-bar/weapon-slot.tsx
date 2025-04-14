@@ -8,8 +8,14 @@ type WeaponSlot =
     active: boolean;
 };
 
+interface WeaponSlotProps
+{
+    slot: WeaponSlot;
+    weapon?: any;
+}
 
-const WeaponSlot = ({ slot }: { slot: WeaponSlot }) =>
+
+const WeaponSlot = ({ slot, weapon = undefined }: WeaponSlotProps) =>
 {
     const borderColor = slot.active
         ? slot.type === 'special'
@@ -30,9 +36,9 @@ const WeaponSlot = ({ slot }: { slot: WeaponSlot }) =>
             transition-all duration-200
             ${slot.active ? 'scale-100' : 'scale-90'}
         `}>
-            <div className={iconSize}>
+            {!weapon && <div className={`[&_svg]:text-gray-600 ${iconSize}`}>
                 {slot.icon}
-            </div>
+            </div>}
         </div>
     );
 };
