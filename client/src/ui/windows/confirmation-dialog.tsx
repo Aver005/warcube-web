@@ -7,6 +7,7 @@ interface ConfirmDialogProps
 {
     isOpen: boolean
     onClose: () => void
+    onSuccessClose?: () => void
     title: string
     description?: string
     icon?: LucideIcon
@@ -19,6 +20,7 @@ interface ConfirmDialogProps
 export const ConfirmDialog = ({
     isOpen,
     onClose,
+    onSuccessClose,
     title,
     description = 'Вы уверены, что хотите выполнить это действие?',
     icon: Icon = AlertTriangle,
@@ -47,6 +49,13 @@ export const ConfirmDialog = ({
                 {
                     setSuccess(false)
                     setIsLoading(false)
+                    
+                    if (onSuccessClose) 
+                    {
+                        onSuccessClose()
+                        return
+                    }
+
                     onClose()
                 }, 1500)
             } else

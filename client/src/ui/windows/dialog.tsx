@@ -7,6 +7,7 @@ interface DialogProps
 {
     isOpen: boolean
     onClose: () => void
+    onSuccessClose?: () => void
     title: string
     initialValue?: string
     maxLength?: number
@@ -25,6 +26,7 @@ interface DialogProps
 export const Dialog = ({
     isOpen,
     onClose,
+    onSuccessClose,
     title,
     initialValue = '',
     maxLength = 16,
@@ -76,7 +78,13 @@ export const Dialog = ({
                 {
                     setSuccess(false)
                     setIsLoading(false)
-                    onClose()
+                    
+                    if (onSuccessClose) 
+                    {
+                        onSuccessClose()
+                        return
+                    }
+
                     setValue(initialValue)
                 }, 1500)
             } else

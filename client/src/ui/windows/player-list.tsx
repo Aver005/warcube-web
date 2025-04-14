@@ -16,7 +16,7 @@ import
     UserCircle2
 } from 'lucide-react';
 import React from 'react';
-import PlayerProfile from './player-profile';
+import SmallPlayerProfile from './small-player-profile';
 import { useUIStore } from '@/stores/ui-store';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useNetworkStore } from '@/stores/network-store';
@@ -54,7 +54,7 @@ interface MatchInfo
 const PlayerList: React.FC = () =>
 {
     const { socket } = useNetworkStore();
-    const { toggleOverlayHold } = useUIStore();
+    const { seyHoldOverlay } = useUIStore();
 
     const [matchInfo] = useState<MatchInfo>({
         mapName: 'de_dust2',
@@ -231,13 +231,13 @@ const PlayerList: React.FC = () =>
 
     const handleSelectPlayer = (player: Player | null) =>
     {
-        toggleOverlayHold()
+        seyHoldOverlay(!!player)
         setSelectedPlayer(player)
     }
 
     const handleRename = () =>
     {
-        toggleOverlayHold()
+        seyHoldOverlay(true)
         setIsNameModalOpen(true)
     }
 
@@ -249,7 +249,7 @@ const PlayerList: React.FC = () =>
             className="fixed inset-0 bg-black/60 flex items-center justify-center z-100 pointer-events-auto"
         >
             {selectedPlayer && (
-                <PlayerProfile
+                <SmallPlayerProfile
                     player={selectedPlayer}
                     onClose={() => handleSelectPlayer(null)}
                 />

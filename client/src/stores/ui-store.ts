@@ -48,6 +48,7 @@ interface UIStore
     overlayWindow: OverlayType;
     holdOverlay: boolean;
     setOverlayWindow: (value: OverlayType) => void;
+    seyHoldOverlay: (value: boolean) => void;
     toggleOverlayHold: () => void;
 }
 
@@ -55,5 +56,6 @@ export const useUIStore = create<UIStore>((set) => ({
     overlayWindow: OverlayType.NONE,
     holdOverlay: false,
     toggleOverlayHold: () => set({ holdOverlay: !useUIStore.getState().holdOverlay }),
-    setOverlayWindow: (value) => set({ overlayWindow: value })
+    setOverlayWindow: (value) => set({ overlayWindow: value }),
+    seyHoldOverlay: (value) => set({ holdOverlay: value })
 }));

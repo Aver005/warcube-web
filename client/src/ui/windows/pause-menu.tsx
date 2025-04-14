@@ -7,6 +7,8 @@ import { Play, Settings, User, LogOut, Menu, X, ServerIcon, UserCircle2 } from '
 import { Dialog } from './dialog';
 import { useNetworkStore } from '@/stores/network-store';
 import { ConfirmDialog } from './confirmation-dialog';
+import PlayerProfile, { Player } from './player-profile';
+import { mockPlayer } from '@/mockdata/player';
 
 const overlayVariants = 
 {
@@ -45,18 +47,22 @@ const PauseMenu: React.FC = () =>
     const { setOverlayWindow } = useUIStore();
 
     const [hoveredItem, setHoveredItem] = useState<number | null>(null);
-    const [isConnectOpened, setConnectOpened] = useState(false);
-    const [isExitOpened, setExitOpened] = useState(false);
+    const [profilePlayer, setProfilePlayer] = useState<Player | null>(null);
+
+    const [popup, setPopup] = useState<
+        'connect-dialog' | 'exit-dialog' | 'player-profile' | null
+    >(null);
 
     const onClose = () => setOverlayWindow(OverlayType.NONE);
+    const onPopupClose = () => setPopup(null);
 
     const menuItems = 
     [
         { id: 1, label: "Continue", icon: <Play className="w-5 h-5" />, action: onClose },
-        { id: 2, label: "Connect", icon: <ServerIcon className="w-5 h-5" />, action: () => setConnectOpened(true) },
+        { id: 2, label: "Connect", icon: <ServerIcon className="w-5 h-5" />, action: () => setPopup('connect-dialog') },
         { id: 3, label: "Settings", icon: <Settings className="w-5 h-5" />, action: () => console.log("Settings") },
-        { id: 4, label: "Profile", icon: <User className="w-5 h-5" />, action: () => console.log("Profile") },
-        { id: 5, label: "Exit", icon: <LogOut className="w-5 h-5" />, action: () => setExitOpened(true) },
+        { id: 4, label: "Profile", icon: <User className="w-5 h-5" />, action: () => { setProfilePlayer(mockPlayer); setPopup('player-profile') } },
+        { id: 5, label: "Exit", icon: <LogOut className="w-5 h-5" />, action: () => setPopup('exit-dialog') },
     ];
 
     return (
@@ -74,9 +80,15 @@ const PauseMenu: React.FC = () =>
                     onClick={onClose}
                 />
 
+                {popup === 'player-profile' && <PlayerProfile 
+                    player={profilePlayer!} 
+                    onClose={onPopupClose} 
+                />}
+
                 <Dialog
-                    isOpen={isConnectOpened}
-                    onClose={() => { setConnectOpened(false); onClose(); }}
+                    isOpen={popup === 'connect-dialog'}
+                    onClose={onPopupClose}
+                    onSuccessClose={onClose}
                     title="Адрес сервера"
                     placeholder="IP (например, 127.0.0.1:3301)"
                     successMessage="Соединение установлено!"
@@ -100,8 +112,9 @@ const PauseMenu: React.FC = () =>
                 />
 
                 <ConfirmDialog 
-                    isOpen={isExitOpened}
-                    onClose={() => { setExitOpened(false); onClose(); }}
+                    isOpen={popup === 'exit-dialog'}
+                    onClose={onPopupClose}
+                    onSuccessClose={onClose}
                     title="Вы уверены?"
                     description="Вы уверены, что хотите выйти из матча?"
                     icon={UserCircle2}
