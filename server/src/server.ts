@@ -5,6 +5,8 @@ import cors from 'cors';
 import { PlayerMovementData, ShootData } from './types/Player';
 import { getRandomInt, getRandomPositions } from './utils';
 import { PlayerDeadEvent } from './types/events/player-events';
+import { AnyItem, Item } from './types/items';
+import { createItemInstance, ItemDatabase } from './ItemDatabase';
 
 interface Player
 {
@@ -23,18 +25,6 @@ interface Position
     y: number;
 }
 
-interface Item
-{
-    id?: number,
-    label: string;
-    name: string;
-    icon: string;
-    quantity?: number;
-    durability?: number;
-    rarity: 'common' | 'uncommon' | 'rare' | 'epic' | 'legendary';
-    position: Position;
-}
-
 const app = express();
 app.use(cors());
 
@@ -49,54 +39,46 @@ const io = new Server(server,
     });
 
 const players: Map<string, Player> = new Map<string, Player>();
-const items: Map<string, Item> = new Map<string, Item>(
-[
-    ['pistol', { label: 'pistol', name: 'Пистолет', icon: 'pistol', quantity: 1, durability: 100, rarity: 'common', position: { x: 0, y: 0 } }],
-    ['rifle', { label: 'rifle', name: 'Винтовка', icon: 'rifle', quantity: 1, durability: 100, rarity: 'common', position: { x: 0, y: 0 } }],
-    ['shotgun', { label: 'shotgun', name: 'Дробовик', icon: 'shotgun', quantity: 1, durability: 100, rarity: 'common', position: { x: 0, y: 0 } }],
-    ['sniper', { label: 'sniper', name: 'Снайперская винтовка', icon: 'sniper', quantity: 1, durability: 100, rarity: 'common', position: { x: 0, y: 0 } }],
-    ['shotgun', { label: 'shotgun', name: 'Дробовик', icon: 'shotgun', quantity: 1, durability: 100, rarity: 'common', position: { x: 0, y: 0 } }],
-]);
-const itemsOnGround = new Array<Item>();
+const itemsOnGround = new Array<AnyItem>();
 
 const spawnGroundItems = (minItems: number, maxItems: number, mapWidth: number, mapHeight: number) =>
 {
     const itemCount = getRandomInt(minItems, maxItems);
+    const keys = Object.keys(ItemDatabase);
 
     for (let i = 0; i < itemCount; i++)
     {
-        const randomItem = Array.from(items.values())[getRandomInt(0, items.size - 1)];
         const randomPosition = 
         {
             x: getRandomInt(0, mapWidth),
             y: getRandomInt(0, mapHeight),
+            rotation: getRandomInt(0, 360)
         };
 
-        const spawnedItem: Item = 
-        {
-            ...randomItem,
-            position: randomPosition,
-            id: i
-        };
+        const randomItem = createItemInstance(
+            keys[getRandomInt(0, keys.length - 1)], 
+            randomPosition
+        );
 
-        itemsOnGround.push(spawnedItem);
+        if (!randomItem) return;
+        itemsOnGround.push(randomItem);
     }
 };
 
-spawnGroundItems(24, 64, 4000, 4000)
+spawnGroundItems(64, 128, 4000, 4000)
 
 io.on('connection', (socket: Socket) =>
 {
     console.log(`User connected: ${socket.id}`);
 
     players.set(socket.id,
-        {
-            id: socket.id,
-            name: `Игрок ${socket.id}`,
-            kills: 0,
-            deaths: 0,
-            ...getRandomPositions(),
-        });
+    {
+        id: socket.id,
+        name: `Игрок ${socket.id}`,
+        kills: 0,
+        deaths: 0,
+        ...getRandomPositions(),
+    });
 
     socket.emit('init', { players: Object.fromEntries(players), itemsOnGround });
     socket.broadcast.emit('newPlayer', players.get(socket.id));

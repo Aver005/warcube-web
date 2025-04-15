@@ -7,6 +7,7 @@ import { Bullet } from "./Bullet";
 import { Socket } from "socket.io-client";
 import { usePlayerStore } from "@/stores/player-store";
 import { GroundItem } from "./GroundItem";
+import { ItemDatabase } from "./ItemDatabase";
 
 export class Player extends GameObjects.Sprite
 {
@@ -45,7 +46,7 @@ export class Player extends GameObjects.Sprite
 
         this.id = id;
         this.name = `Player ${id}`;
-        this.inventory = new Inventory();
+        this.inventory = usePlayerStore.getState().inventory;
         this.socket = scene.socket;
         this.reloadText = scene.add.text(0, 0, 'Reloading...').setOrigin(0.5);
         this.reloadText.setVisible(false);
@@ -63,7 +64,6 @@ export class Player extends GameObjects.Sprite
         const input = this.scene.getInput();
         this.movement(input);
         this.shooting(input, time);
-        this.collisions(input);
         this.switchingWeapons(input);
         this.updateRotation();
     }
@@ -111,25 +111,6 @@ export class Player extends GameObjects.Sprite
         useGameStore.getState().setActiveWeapon(this.activeWeapon);
     }
 
-    collisions(input: InputData)
-    {
-        // if (input.pickup)
-        // {
-        //     this.scene.itemsOnGround.map((item) =>
-        //     {
-        //         if (!Phaser.Geom.Intersects.RectangleToRectangle(
-        //             item.object.getBounds(),
-        //             this.getBounds(),
-        //         )) 
-        //         return
-
-        //         this.scene.itemsOnGround.splice(this.scene.itemsOnGround.indexOf(item), 1);
-        //         item.object.destroy();
-        //         this.socket.emit('playerPickupItem', item.id);
-        //     })
-        // }
-    }
-
     onCollideWithBullet(bullet: Bullet)
     {
         if (this.id === bullet.getOwnerId()) return
@@ -157,7 +138,10 @@ export class Player extends GameObjects.Sprite
         if (this.id !== this.socket.id) return
         const input = this.scene.getInput();
         if (!input.pickup) return;
+        if (this.inventory.items.length >= this.inventory.maxSize) return;
+
         this.socket.emit('playerPickupItem', groundItem.id);
+        this.inventory.items.push(groundItem.item);
     }
 
     setReloadTextVisible(visible: boolean)
@@ -235,6 +219,7 @@ export class Player extends GameObjects.Sprite
 
     destroy(fromScene?: boolean): void 
     {
+        this.inventory.clear();
         this.reloadText.destroy(fromScene);
         super.destroy(fromScene);
     }

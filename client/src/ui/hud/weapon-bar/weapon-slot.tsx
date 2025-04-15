@@ -36,7 +36,10 @@ const WeaponSlot = ({ slot, weapon = undefined }: WeaponSlotProps) =>
             transition-all duration-200
             ${slot.active ? 'scale-100' : 'scale-90'}
         `}>
-            {!weapon && <div className={`[&_svg]:text-gray-600 ${iconSize}`}>
+            {weapon ? 
+            <img src={`./icons/items/${weapon.icon.replace(':', '_')}.svg`} alt={weapon.name} className={iconSize} />
+            : 
+            <div className={`[&_svg]:text-gray-600 opacity-60 ${iconSize}`}>
                 {slot.icon}
             </div>}
         </div>

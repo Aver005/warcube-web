@@ -1,18 +1,10 @@
 'use client'
 
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useUIStore } from '@/stores/ui-store';
-
-interface Item
-{
-    id: string;
-    name: string;
-    icon: string;
-    quantity?: number;
-    durability?: number;
-    rarity: 'common' | 'uncommon' | 'rare' | 'epic' | 'legendary';
-}
+import { AnyItem, type PassiveItem, Item } from '@/types/items';
+import { usePlayerStore } from '@/stores/player-store';
+import { useGameStore } from '@/stores/game-store';
 
 interface PlayerStats
 {
@@ -20,73 +12,76 @@ interface PlayerStats
     maxHealth: number;
     armor: number;
     maxArmor: number;
-    effects: {
+    effects: 
+    {
         name: string;
         icon: string;
         duration: number;
     }[];
 }
 
+const containerVariants =
+{
+    hidden: { opacity: 0, y: 20 },
+    visible: 
+    {
+        opacity: 1,
+        y: 0,
+        transition: 
+        {
+            duration: 0.3,
+            ease: "easeOut",
+            staggerChildren: 0.05,
+            delayChildren: 0.1
+        }
+    },
+    exit: { opacity: 0, y: 20 }
+};
+
+const itemVariants = 
+{
+    hidden: { opacity: 0, scale: 0.8 },
+    visible: { opacity: 1, scale: 0.95 },
+    hover: { scale: 1, transition: { duration: 0.1 } },
+    tap: { scale: 0.9 }
+};
+
+const statsVariants = 
+{
+    hidden: { opacity: 0, x: -20 },
+    visible: { opacity: 1, x: 0, transition: { delay: 0.2, duration: 0.3 } }
+};
+
+const slotVariants = 
+{
+    hidden: { opacity: 0, y: 10 },
+    visible: (i: number) => 
+    ({
+        opacity: 1,
+        y: 0,
+        transition: { delay: 0.1 + i * 0.05, duration: 0.3 }
+    })
+};
+
 const Inventory: React.FC = () =>
 {
-    const { toggleOverlayHold } = useUIStore();
+    const { inventory } = usePlayerStore();
+    const { health, armor } = useGameStore();
 
-    const [selectedItem, setSelectedItem] = useState<Item | null>(null);
-    const [activeWeapon1, setActiveWeapon1] = useState<Item | null>(null);
-    const [activeWeapon2, setActiveWeapon2] = useState<Item | null>(null);
-    const [activeSpecial, setActiveSpecial] = useState<Item | null>(null);
-    const [inventoryItems, setInventoryItems] = useState<Item[]>([]);
+    const [selectedItem, setSelectedItem] = useState<AnyItem | null>(null);
     const [inventorySize, setInventorySize] = useState(6);
-    const [helmet, setHelmet] = useState<Item | null>(null);
-    const [chestplate, setChestplate] = useState<Item | null>(null);
-    const [boots, setBoots] = useState<Item | null>(null);
 
-    const playerStats: PlayerStats = {
-        health: 75,
+    const playerStats: PlayerStats =
+    {
+        health,
         maxHealth: 100,
-        armor: 45,
+        armor,
         maxArmor: 100,
-        effects: [
+        effects:
+        [
             { name: 'Regeneration', icon: '❤️', duration: 12 },
             { name: 'Speed Boost', icon: '⚡', duration: 8 }
         ]
-    };
-
-    // Анимации
-    const containerVariants = {
-        hidden: { opacity: 0, y: 20 },
-        visible: {
-            opacity: 1,
-            y: 0,
-            transition: {
-                duration: 0.3,
-                ease: "easeOut",
-                staggerChildren: 0.05,
-                delayChildren: 0.1
-            }
-        },
-        exit: { opacity: 0, y: 20 }
-    };
-
-    const itemVariants = {
-        hidden: { opacity: 0, scale: 0.8 },
-        visible: { opacity: 1, scale: 1 },
-        hover: { scale: 1.05, transition: { duration: 0.1 } },
-        tap: { scale: 0.95 }
-    };
-
-    const statsVariants = {
-        hidden: { opacity: 0, x: -20 },
-        visible: { opacity: 1, x: 0, transition: { delay: 0.2, duration: 0.3 } }
-    };
-
-    const slotVariants = {
-        hidden: { opacity: 0, y: 10 },
-        visible: (i: number) => ({
-            opacity: 1,
-            y: 0,
-            transition: { delay: 0.1 + i * 0.05, duration: 0.3 }
-        })
     };
 
     const selectItem = (item: Item) =>
@@ -94,16 +89,32 @@ const Inventory: React.FC = () =>
         setSelectedItem(item);
     };
 
-    const equipItem = (slot: 'weapon1' | 'weapon2' | 'special' | 'helmet' | 'chestplate' | 'boots') =>
+    const equipItem = (slot: 'weapon1' | 'weapon2' | 'special' | 'helmet' | 'chestplate' | 'boots', index: number) =>
     {
         if (!selectedItem) return;
+        if (selectedItem.slotType && selectedItem.slotType !== slot) return;
+        let isEquipped = false;
 
-        // Логика экипировки
-        // ...
+        if (selectedItem.type === 'passive' && !inventory.armorSlots[index])
+        {
+            inventory.armorSlots[index] = selectedItem as any;
+            isEquipped = true;
+        }
+        else if ((!selectedItem.slotType || selectedItem.slotType !== 'special') && !inventory.hotbar[index])
+        {
+            inventory.hotbar[index] = selectedItem as any;
+            isEquipped = true;
+        }
+
+        if (isEquipped)
+        {
+            inventory.items = inventory.items.filter((item) => item.id !== selectedItem.id);
+            setSelectedItem(null);
+        }
     };
 
     return (
-        <div className="fixed bottom-4 right-4 z-100">
+        <div className="fixed bottom-4 right-4 z-100 pointer-events-auto">
             <AnimatePresence>
                 <motion.div
                     className="fixed inset-0 bg-black/80 flex items-center justify-center p-4"
@@ -112,7 +123,7 @@ const Inventory: React.FC = () =>
                     exit={{ opacity: 0 }}
                 >
                     <motion.div
-                        className="bg-gray-900 bg-opacity-90 rounded-xl p-6 w-full max-w-4xl h-[80vh] flex"
+                        className="bg-gray-900 bg-opacity-90 rounded-xl p-6 w-full max-w-7xl h-[80vh] flex"
                         initial="hidden"
                         animate="visible"
                         exit="exit"
@@ -184,18 +195,30 @@ const Inventory: React.FC = () =>
                                     {['helmet', 'chestplate', 'boots'].map((slot, i) => (
                                         <motion.div
                                             key={slot}
-                                            className="bg-gray-700 rounded-lg p-3 h-16 flex items-center justify-center"
+                                            className="bg-gray-700 rounded-lg p-4 h-16 flex align-baseline items-center justify-start gap-4"
                                             variants={slotVariants}
                                             custom={i}
-                                            whileHover={{ scale: 1.03 }}
                                         >
-                                            {slot === 'helmet' && helmet ? (
-                                                <div className="text-center">
-                                                    <div className="text-lg">{helmet.icon}</div>
-                                                    <div className="text-xs text-gray-300">{helmet.name}</div>
-                                                </div>
+                                            {inventory.armorSlots[i] ? (
+                                                <>
+                                                    <img 
+                                                        className='size-8'
+                                                        src={`./icons/items/${inventory.armorSlots[i].icon.replace(':', '_')}.svg`} 
+                                                    />
+                                                    <div className="text-sm text-gray-300">
+                                                        {inventory.armorSlots[i].name}
+                                                    </div>
+                                                    <span className='text-xs text-black p-2 bg-amber-500 rounded-full'>
+                                                        {inventory.armorSlots[i].durability}
+                                                    </span>
+                                                </>
                                             ) : (
-                                                <span className="text-gray-500">{slot.charAt(0).toUpperCase() + slot.slice(1)}</span>
+                                                <span 
+                                                    className={`${selectedItem && selectedItem.slotType && selectedItem.slotType === slot ? 'text-white cursor-pointer' : 'text-gray-500'}`}
+                                                    onClick={() => equipItem(slot as any, i)}
+                                                >
+                                                    {slot.charAt(0).toUpperCase() + slot.slice(1)}
+                                                </span>
                                             )}
                                         </motion.div>
                                     ))}
@@ -205,26 +228,29 @@ const Inventory: React.FC = () =>
 
                         {/* Основной инвентарь */}
                         <div className="w-2/4 px-4">
-                            <h3 className="text-xl font-bold text-white mb-4">Inventory ({inventoryItems.length}/{inventorySize})</h3>
+                            <h3 className="text-xl font-bold text-white mb-4">Inventory ({inventory.items.length}/{inventorySize})</h3>
                             <motion.div
-                                className="grid grid-cols-4 gap-3"
+                                className="grid grid-cols-6 gap-3"
                                 variants={containerVariants}
                             >
                                 {Array.from({ length: inventorySize }).map((_, i) => (
                                     <motion.div
                                         key={i}
-                                        className={`aspect-square rounded-lg flex items-center justify-center ${i < inventoryItems.length ? 'bg-gray-700 cursor-pointer' : 'bg-gray-800 border border-dashed border-gray-600'}`}
+                                        className={`relative aspect-square rounded-lg flex items-center justify-center ${i < inventory.items.length ? 'bg-gray-700 cursor-pointer' : 'bg-gray-800 border border-dashed border-gray-600'}`}
                                         variants={itemVariants}
                                         whileHover="hover"
                                         whileTap="tap"
-                                        onClick={() => i < inventoryItems.length && selectItem(inventoryItems[i])}
+                                        onClick={() => i < inventory.items.length && selectItem(inventory.items[i])}
                                     >
-                                        {i < inventoryItems.length ? (
+                                        {i < inventory.items.length ? (
                                             <div className="text-center">
-                                                <div className="text-2xl">{inventoryItems[i].icon}</div>
-                                                {inventoryItems[i].quantity && (
-                                                    <div className="text-xs bg-black bg-opacity-50 rounded-full px-1 absolute bottom-1 right-1">
-                                                        {inventoryItems[i].quantity}
+                                                <img 
+                                                    className='size-8'
+                                                    src={`./icons/items/${inventory.items[i].icon.replace(':', '_')}.svg`} 
+                                                />
+                                                {inventory.items[i].quantity && (
+                                                    <div className="text-xs text-gray-300 bg-black/20 rounded-full size-6 flex items-center justify-center absolute bottom-1 right-1">
+                                                        {inventory.items[i].quantity}
                                                     </div>
                                                 )}
                                             </div>
@@ -241,24 +267,31 @@ const Inventory: React.FC = () =>
                                 <h3 className="text-xl font-bold text-white mb-4">Active Slots</h3>
                                 <div className="space-y-3">
                                     {[
-                                        { slot: 'weapon1', item: activeWeapon1, label: 'Primary' },
-                                        { slot: 'weapon2', item: activeWeapon2, label: 'Secondary' },
-                                        { slot: 'special', item: activeSpecial, label: 'Special' }
+                                        { slot: 'active', item: inventory.hotbar[0], label: 'Primary' },
+                                        { slot: 'active', item: inventory.hotbar[1], label: 'Secondary' },
+                                        { slot: 'special', item: inventory.specialSlot, label: 'Special' }
                                     ].map(({ slot, item, label }, i) => (
                                         <motion.div
                                             key={slot}
-                                            className="bg-gray-700 rounded-lg p-3 h-16 flex items-center justify-center"
+                                            className="bg-gray-700 rounded-lg p-4 h-16 flex align-baseline items-center justify-start gap-4"
                                             variants={slotVariants}
                                             custom={i + 3}
-                                            whileHover={{ scale: 1.03 }}
                                         >
                                             {item ? (
-                                                <div className="text-center">
-                                                    <div className="text-lg">{item.icon}</div>
+                                                <>
+                                                    <img 
+                                                        className='size-8'
+                                                        src={`./icons/items/${item.icon.replace(':', '_')}.svg`} 
+                                                    />
                                                     <div className="text-xs text-gray-300">{item.name}</div>
-                                                </div>
+                                                </>
                                             ) : (
-                                                <span className="text-gray-500">{label}</span>
+                                                <span 
+                                                    className={`${selectedItem && (selectedItem.slotType && selectedItem.slotType === slot) ? 'text-white cursor-pointer' : 'text-gray-500'}`}
+                                                    onClick={() => equipItem(slot as any, i)}
+                                                >
+                                                    {label}
+                                                </span>
                                             )}
                                         </motion.div>
                                     ))}
@@ -274,7 +307,12 @@ const Inventory: React.FC = () =>
                                     exit={{ opacity: 0, y: 20 }}
                                 >
                                     <h3 className="text-xl font-bold text-white mb-2">{selectedItem.name}</h3>
-                                    <div className="text-4xl text-center my-4">{selectedItem.icon}</div>
+                                    <div className="text-4xl text-center my-4">
+                                        <img 
+                                            className='size-24'
+                                            src={`./icons/items/${selectedItem.icon.replace(':', '_')}.svg`} 
+                                        />
+                                    </div>
                                     <div className="text-gray-300 text-sm mb-4">
                                         {selectedItem.quantity && <div>Quantity: {selectedItem.quantity}</div>}
                                         {selectedItem.durability && <div>Durability: {selectedItem.durability}%</div>}

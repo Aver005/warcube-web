@@ -25,7 +25,7 @@ export interface Item
     rarity: Rarity;
     position: Position;
     type: ItemType;
-    slotType?: 'special' | 'helmet' | 'chestplate' | 'boots' | 'utility' | 'active' | 'bag';
+    slotType?: string;
 }
 
 export interface RangedWeapon extends Item
@@ -85,7 +85,7 @@ export interface ActiveItem extends Item
 export interface PassiveItem extends Item
 {
     type: 'passive';
-    slotType: 'helmet' | 'chestplate' | 'boots' | 'utility'; 
+    slotType?: 'helmet' | 'chestplate' | 'boots' | 'utility'; 
     effects: 
     {
         [key: string]: number;
@@ -95,7 +95,6 @@ export interface PassiveItem extends Item
 export interface SpecialItem extends Item
 {
     type: 'special';
-    slotType: 'special',
     restrictions: 
     {
         [key: string]: number;

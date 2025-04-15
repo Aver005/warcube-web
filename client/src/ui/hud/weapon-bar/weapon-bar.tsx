@@ -3,9 +3,11 @@ import { useGameStore } from '@/stores/game-store';
 import { BombIcon, CrosshairIcon, RectangleEllipsisIcon, SwordIcon } from 'lucide-react';
 import React from 'react';
 import WeaponSlot from './weapon-slot';
+import { usePlayerStore } from '@/stores/player-store';
 
 const WeaponBar: React.FC = () =>
 {
+    const { inventory } = usePlayerStore();
     const { ammo, kills, activeWeapon } = useGameStore();
 
     const renderWeaponSlots = (activeWeapon: number) =>
@@ -34,8 +36,8 @@ const WeaponBar: React.FC = () =>
 
         return (
             <div className="flex space-x-3 h-16">
-                {slots.map((slot) => (
-                    <WeaponSlot key={slot.id} slot={slot} />
+                {slots.map((slot, i) => (
+                    <WeaponSlot key={slot.id} slot={slot} weapon={inventory.hotbar[i]} />
                 ))}
             </div>
         );

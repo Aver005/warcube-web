@@ -11,6 +11,7 @@ import { Item } from "./types/items";
 import { Player } from "./entities/Player";
 import { GroundItem } from "./entities/GroundItem";
 import { ObjectMap } from "./utils/object-map";
+import { ItemDatabase } from "./entities/ItemDatabase";
 
 ///@ts-ignore
 const SERVER_IP = import.meta.env.VITE_SERVER_IP;
@@ -37,6 +38,9 @@ class MainScene extends Phaser.Scene
     {
         this.load.image('player', './player.png');
         this.load.image('item', './item.png');
+        Object.entries(ItemDatabase).forEach(([key, item]) => 
+            this.load.image(item.icon, `./icons/items/${item.icon.replace(':', '_')}.svg`)
+        );
     }
 
     create()
@@ -44,6 +48,8 @@ class MainScene extends Phaser.Scene
         this.inputManager = new InputManager(this);
         useNetworkStore.getState().setScene(this);
         this.connect();
+
+        // console.log(JSON.stringify(ItemDatabase))
     }
 
     connect(forceIP?: string)
@@ -207,7 +213,7 @@ class MainScene extends Phaser.Scene
     {
         this.itemsOnGround.add(
             item.id,
-            new GroundItem(this, item.id, item.position.x, item.position.y, 'item')
+            new GroundItem(this, item)
         );
     }
 
