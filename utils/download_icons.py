@@ -78,6 +78,8 @@ def download_and_color_icons(items_data: Dict[str, Any], output_dir: str = 'icon
             svg['stroke-linecap'] = 'round'
             svg['stroke-linejoin'] = 'round'
             svg['fill'] = fill_color
+            svg['width'] = '24'
+            svg['height'] = '24'
             
             # Сохраняем
             filename = f"{output_dir}/{item['icon'].replace(':', '_')}.svg"
