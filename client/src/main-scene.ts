@@ -89,7 +89,12 @@ class MainScene extends Phaser.Scene
 
     disconnect()
     {
-        if (this.socket) this.socket.disconnect();
+        if (this.socket)
+        {
+            this.socket.disconnect();
+            this.socket.close();
+        }
+        
         this.clenup();
     }
 

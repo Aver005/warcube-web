@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { AnyItem, type PassiveItem, Item } from '@/types/items';
+import { AnyItem, Item, ItemType, WearableItem, SpecialItem, isStackableItem, isConsumableItem } from '@/types/items';
 import { usePlayerStore } from '@/stores/player-store';
 import { useGameStore } from '@/stores/game-store';
 
@@ -65,7 +65,7 @@ const slotVariants =
 
 const Inventory: React.FC = () =>
 {
-    const { inventory } = usePlayerStore();
+    const { inventory, updateInventory } = usePlayerStore();
     const { health, armor } = useGameStore();
 
     const [selectedItem, setSelectedItem] = useState<AnyItem | null>(null);
@@ -89,29 +89,56 @@ const Inventory: React.FC = () =>
         setSelectedItem(item);
     };
 
-    const equipItem = (slot: 'weapon1' | 'weapon2' | 'special' | 'helmet' | 'chestplate' | 'boots', index: number) =>
+    const onSuccessEquip = (replaceItem: AnyItem | null = null) =>
     {
         if (!selectedItem) return;
-        if (selectedItem.slotType && selectedItem.slotType !== slot) return;
-        let isEquipped = false;
 
-        if (selectedItem.type === 'passive' && !inventory.armorSlots[index])
+        const items = inventory.items
+        inventory.items = replaceItem ? items.map((item) => 
         {
-            inventory.armorSlots[index] = selectedItem as any;
-            isEquipped = true;
+            if (item.id === replaceItem.id) return selectedItem; 
+            if (item.id === selectedItem.id) return replaceItem;
+            return item
+        }) : items.filter(i => i.id !== selectedItem.id);
+
+        setSelectedItem(null);
+        updateInventory();
+    }
+
+    const equipArmor = (index: number) =>
+    {
+        if (!selectedItem) return;
+        console.log(selectedItem)
+        if (selectedItem.type !== ItemType.Wearable) return
+        if (inventory.armorSlots[index]) return
+
+        inventory.armorSlots[index] = selectedItem as WearableItem;
+        onSuccessEquip();
+    }
+
+    const equipHotbar = (slot: 'active' | 'special' | string, index: number) =>
+    {
+        if (!selectedItem) return;
+        if (selectedItem.slotType !== slot) return;
+
+        let replaceItem = null;
+        if (slot === 'active')
+        {
+            if (inventory.hotbar[index]) return
+            inventory.hotbar[index] = selectedItem;
         }
-        else if ((!selectedItem.slotType || selectedItem.slotType !== 'special') && !inventory.hotbar[index])
+        else
         {
-            inventory.hotbar[index] = selectedItem as any;
-            isEquipped = true;
+            if (inventory.specialSlot)
+            {
+                if (inventory.specialSlot.activated) return
+                replaceItem = {...inventory.specialSlot};
+            }
+            inventory.specialSlot = selectedItem as SpecialItem;
         }
 
-        if (isEquipped)
-        {
-            inventory.items = inventory.items.filter((item) => item.id !== selectedItem.id);
-            setSelectedItem(null);
-        }
-    };
+        onSuccessEquip(replaceItem);
+    }
 
     return (
         <div className="fixed bottom-4 right-4 z-100 pointer-events-auto">
@@ -215,7 +242,7 @@ const Inventory: React.FC = () =>
                                             ) : (
                                                 <span 
                                                     className={`${selectedItem && selectedItem.slotType && selectedItem.slotType === slot ? 'text-white cursor-pointer' : 'text-gray-500'}`}
-                                                    onClick={() => equipItem(slot as any, i)}
+                                                    onClick={() => equipArmor(i)}
                                                 >
                                                     {slot.charAt(0).toUpperCase() + slot.slice(1)}
                                                 </span>
@@ -248,7 +275,7 @@ const Inventory: React.FC = () =>
                                                     className='size-8'
                                                     src={`./icons/items/${inventory.items[i].icon.replace(':', '_')}.svg`} 
                                                 />
-                                                {inventory.items[i].quantity && (
+                                                {isStackableItem(inventory.items[i]) && (
                                                     <div className="text-xs text-gray-300 bg-black/20 rounded-full size-6 flex items-center justify-center absolute bottom-1 right-1">
                                                         {inventory.items[i].quantity}
                                                     </div>
@@ -272,7 +299,7 @@ const Inventory: React.FC = () =>
                                         { slot: 'special', item: inventory.specialSlot, label: 'Special' }
                                     ].map(({ slot, item, label }, i) => (
                                         <motion.div
-                                            key={slot}
+                                            key={label}
                                             className="bg-gray-700 rounded-lg p-4 h-16 flex align-baseline items-center justify-start gap-4"
                                             variants={slotVariants}
                                             custom={i + 3}
@@ -288,7 +315,7 @@ const Inventory: React.FC = () =>
                                             ) : (
                                                 <span 
                                                     className={`${selectedItem && (selectedItem.slotType && selectedItem.slotType === slot) ? 'text-white cursor-pointer' : 'text-gray-500'}`}
-                                                    onClick={() => equipItem(slot as any, i)}
+                                                    onClick={() => equipHotbar(slot, i)}
                                                 >
                                                     {label}
                                                 </span>
@@ -314,8 +341,8 @@ const Inventory: React.FC = () =>
                                         />
                                     </div>
                                     <div className="text-gray-300 text-sm mb-4">
-                                        {selectedItem.quantity && <div>Quantity: {selectedItem.quantity}</div>}
-                                        {selectedItem.durability && <div>Durability: {selectedItem.durability}%</div>}
+                                        {isStackableItem(selectedItem) && <div>Quantity: {selectedItem.quantity}</div>}
+                                        {isConsumableItem(selectedItem) && <div>Durability: {selectedItem.durability}%</div>}
                                     </div>
                                     <div className="flex flex-wrap gap-2 mt-auto">
                                         <motion.button

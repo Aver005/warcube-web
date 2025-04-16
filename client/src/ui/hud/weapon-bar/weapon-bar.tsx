@@ -7,8 +7,11 @@ import { usePlayerStore } from '@/stores/player-store';
 
 const WeaponBar: React.FC = () =>
 {
-    const { inventory } = usePlayerStore();
-    const { ammo, kills, activeWeapon } = useGameStore();
+    const lastUpdate = usePlayerStore((state) => state.lastInventoryUpdate);
+    const inventory = usePlayerStore((state) => state.inventory);
+    const ammo = useGameStore((state) => state.ammo);
+    const kills = useGameStore((state) => state.kills);
+    const activeWeapon = useGameStore((state) => state.activeWeapon);
 
     const renderWeaponSlots = (activeWeapon: number) =>
     {

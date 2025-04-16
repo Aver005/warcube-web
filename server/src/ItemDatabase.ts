@@ -1,46 +1,55 @@
-import { RangedWeapon, MeleeWeapon, ThrowableWeapon, DeployableItem, ActiveItem, PassiveItem, SpecialItem, Position, AnyItem } from "./types/items";
+import { RangedWeapon, MeleeWeapon, ThrowableWeapon, DeployableItem, ActiveItem, PassiveItem, SpecialItem, Position, AnyItem, Item, SlotType, Rarity, ItemType, WearableItem } from "./types/items";
 
+export const ItemTemplate =
+{
+    slotType: SlotType.ACTIVE,
+} as Item;
 
 export const ItemDatabase: { [key: string]: AnyItem } =
 {
     'medkit': {
+        ...ItemTemplate,
         id: 1,
         label: 'Medkit',
         name: 'Аптечка',
         icon: 'mdi:medication',
         quantity: 1,
-        rarity: 'uncommon',
+        rarity: Rarity.UNCOMMON,
         position: { x: 0, y: 0 },
-        type: 'active',
+        type: ItemType.Active,
         useTime: 3,
         cooldown: 10,
         effect: 'restore 50 health',
-        isConsumable: true
     } as ActiveItem,
 
     'ammo_pistol': {
+        ...ItemTemplate,
         id: 2,
         label: 'Pistol Ammo',
         name: 'Патроны для пистолета',
-        icon: 'mdi:pistol',
-        quantity: 12,
-        rarity: 'common',
+        icon: 'game-icons:ammo-box',
+        maxQuantity: 12,
+        quantity: 0,
+        rarity: Rarity.COMMON,
+        slotType: SlotType.UTILITY,
         position: { x: 0, y: 0 },
-        type: 'passive',
+        type: ItemType.Passive,
         effects: {
             'ammo': 12
         }
     } as PassiveItem,
 
     'pistol': {
+        ...ItemTemplate,
         id: 3,
         label: 'Pistol',
         name: 'Пистолет',
         icon: 'mdi:pistol',
         durability: 100,
-        rarity: 'uncommon',
+        maxDurability: 100,
+        rarity: Rarity.UNCOMMON,
         position: { x: 0, y: 0 },
-        type: 'ranged_weapon',
+        type: ItemType.RangedWeapon,
         damage: 15,
         fireRate: 2,
         reloadTime: 1.5,
@@ -54,14 +63,16 @@ export const ItemDatabase: { [key: string]: AnyItem } =
     } as RangedWeapon,
 
     'assault_rifle': {
+        ...ItemTemplate,
         id: 4,
         label: 'Assault Rifle',
         name: 'Штурмовая винтовка',
         icon: 'mdi:gun',
         durability: 100,
-        rarity: 'rare',
+        maxDurability: 100,
+        rarity: Rarity.RARE,
         position: { x: 0, y: 0 },
-        type: 'ranged_weapon',
+        type: ItemType.RangedWeapon,
         damage: 20,
         fireRate: 10,
         reloadTime: 2.5,
@@ -75,14 +86,16 @@ export const ItemDatabase: { [key: string]: AnyItem } =
     } as RangedWeapon,
 
     'knife': {
+        ...ItemTemplate,
         id: 5,
         label: 'Knife',
         name: 'Нож',
         icon: 'mdi:knife',
         durability: 200,
-        rarity: 'common',
+        maxDurability: 200,
+        rarity: Rarity.COMMON,
         position: { x: 0, y: 0 },
-        type: 'melee_weapon',
+        type: ItemType.MeleeWeapon,
         damage: 25,
         attackRate: 1.5,
         range: 1.5,
@@ -91,14 +104,16 @@ export const ItemDatabase: { [key: string]: AnyItem } =
     } as MeleeWeapon,
 
     'katana': {
+        ...ItemTemplate,
         id: 6,
         label: 'Katana',
         name: 'Катана',
         icon: 'mdi:sword',
         durability: 150,
-        rarity: 'rare',
+        maxDurability: 150,
+        rarity: Rarity.RARE,
         position: { x: 0, y: 0 },
-        type: 'melee_weapon',
+        type: ItemType.MeleeWeapon,
         damage: 40,
         attackRate: 1,
         range: 2,
@@ -107,58 +122,66 @@ export const ItemDatabase: { [key: string]: AnyItem } =
     } as MeleeWeapon,
 
     'throwing_knife': {
+        ...ItemTemplate,
         id: 7,
         label: 'Throwing Knife',
         name: 'Метательный нож',
         icon: 'mdi:knife-military',
         quantity: 3,
-        rarity: 'uncommon',
+        rarity: Rarity.UNCOMMON,
         position: { x: 0, y: 0 },
-        type: 'throwable',
+        type: ItemType.Throwable,
         damage: 30,
         throwForce: 50,
-        isConsumable: true
     } as ThrowableWeapon,
 
     'molotov': {
+        ...ItemTemplate,
         id: 8,
         label: 'Molotov Cocktail',
         name: 'Коктейль Молотова',
         icon: 'mdi:fire',
         quantity: 1,
-        rarity: 'rare',
+        rarity: Rarity.RARE,
         position: { x: 0, y: 0 },
-        type: 'throwable',
+        type: ItemType.Throwable,
         damage: 10,
         throwForce: 40,
         explosionRadius: 3,
         fuseTime: 2,
-        isConsumable: true
     } as ThrowableWeapon,
 
     'barricade': {
+        ...ItemTemplate,
         id: 9,
         label: 'Barricade',
         name: 'Баррикада',
         icon: 'mdi:wall',
         durability: 200,
-        rarity: 'uncommon',
+        maxDurability: 200,
+        quantity: 0,
+        maxQuantity: 4,
+        rarity: Rarity.UNCOMMON,
         position: { x: 0, y: 0 },
-        type: 'deployable',
+        type: ItemType.Deployable,
         health: 300,
         deployTime: 3,
         isBlocking: true
     } as DeployableItem,
 
     'turret': {
+        ...ItemTemplate,
         id: 10,
         label: 'Auto Turret',
         name: 'Авто-турель',
-        icon: 'mdi:robot',
+        icon: 'game-icons:tesla-turret',
         durability: 100,
-        rarity: 'epic',
+        maxDurability: 100,
+        quantity: 0,
+        maxQuantity: 1,
+        rarity: Rarity.EPIC,
         position: { x: 0, y: 0 },
-        type: 'deployable',
+        type: ItemType.Deployable,
         health: 150,
         deployTime: 5,
         activeTime: 60,
@@ -167,47 +190,53 @@ export const ItemDatabase: { [key: string]: AnyItem } =
     } as DeployableItem,
 
     'kevlar_vest': {
+        ...ItemTemplate,
         id: 11,
         label: 'Kevlar Vest',
         name: 'Кевларовый жилет',
         icon: 'mdi:shield',
         durability: 100,
-        rarity: 'rare',
+        maxDurability: 100,
+        rarity: Rarity.RARE,
         position: { x: 0, y: 0 },
-        type: 'passive',
-        slotType: 'chestplate',
+        type: ItemType.Wearable,
+        slotType: SlotType.CHESTPLATE,
         effects:
         {
             'damageReduction': 0.3,
             'speed': -0.1
         }
-    } as PassiveItem,
+    } as WearableItem,
 
     'tactical_helmet': {
+        ...ItemTemplate,
         id: 12,
         label: 'Tactical Helmet',
         name: 'Тактический шлем',
         icon: 'mdi:hard-hat',
         durability: 80,
-        rarity: 'uncommon',
+        maxDurability: 80,
+        rarity: Rarity.UNCOMMON,
         position: { x: 0, y: 0 },
-        type: 'passive',
-        slotType: 'helmet',
+        type: ItemType.Wearable,
+        slotType: SlotType.HELMET,
         effects:
         {
             'headshotProtection': 0.5
         }
-    } as PassiveItem,
+    } as WearableItem,
 
     'adrenaline_injector': {
+        ...ItemTemplate,
         id: 13,
         label: 'Adrenaline Injector',
         name: 'Адреналиновый инъектор',
         icon: 'mdi:needle',
         quantity: 1,
-        rarity: 'legendary',
+        rarity: Rarity.LEGENDARY,
         position: { x: 0, y: 0 },
-        type: 'special',
+        type: ItemType.Special,
+        slotType: "special",
         restrictions:
         {
             'health': -20,
@@ -218,18 +247,20 @@ export const ItemDatabase: { [key: string]: AnyItem } =
             'speed': 0.4,
             'damage': 0.25,
             'fireRate': 0.3
-        }
+        },
+        activated: false,
     } as SpecialItem,
 
     'stealth_module': {
+        ...ItemTemplate,
         id: 14,
         label: 'Stealth Module',
         name: 'Модуль скрытности',
         icon: 'mdi:ghost',
-        durability: 50,
-        rarity: 'epic',
+        rarity: Rarity.EPIC,
         position: { x: 0, y: 0 },
-        type: 'special',
+        type: ItemType.Special,
+        slotType: "special",
         restrictions:
         {
             'armor': -0.5,
@@ -239,17 +270,20 @@ export const ItemDatabase: { [key: string]: AnyItem } =
         {
             'visibility': -0.7,
             'moveSilently': 1
-        }
+        },
+        activated: false,
     } as SpecialItem,
 
     'storm_crossbow': {
+        ...ItemTemplate,
         id: 15,
         label: "ranged_weapon",
         name: "Штормовой арбалет",
         icon: "game-icons:crossbow",
         quantity: 1,
         durability: 200,
-        rarity: "epic",
+        maxDurability: 200,
+        rarity: Rarity.EPIC,
         position: { x: 0, y: 0 },
         type: "ranged_weapon",
         damage: 45,
@@ -265,13 +299,15 @@ export const ItemDatabase: { [key: string]: AnyItem } =
     } as RangedWeapon,
 
     'shadow_claws': {
+        ...ItemTemplate,
         id: 16,
         label: "melee_weapon",
         name: "Когти тени",
         icon: "game-icons:bird-claw",
         quantity: 1,
         durability: 150,
-        rarity: "rare",
+        maxDurability: 150,
+        rarity: Rarity.RARE,
         position: { x: 0, y: 0 },
         type: "melee_weapon",
         damage: 30,
@@ -282,22 +318,29 @@ export const ItemDatabase: { [key: string]: AnyItem } =
     } as MeleeWeapon,
 
     'ancient_helmet': {
+        ...ItemTemplate,
         id: 17,
         label: "armor",
         name: "Шлем древнего воина",
         icon: "game-icons:dwarf-helmet",
-        quantity: 1,
-        rarity: "legendary",
+        durability: 120,
+        maxDurability: 120,
+        rarity: Rarity.LEGENDARY,
         position: { x: 0, y: 0 },
-        type: "passive",
+        type: ItemType.Wearable,
         slotType: "helmet",
-        effects: {
+        increments:
+        {
+            armor: 12 
+        },
+        effects: 
+        {
             "defense": 15,
-            "maxHealth": 20
         }
-    } as PassiveItem,
+    } as WearableItem,
 
     'spike_grenade': {
+        ...ItemTemplate,
         id: 18,
         label: "throwable",
         name: "Граната с шипами",
@@ -310,33 +353,42 @@ export const ItemDatabase: { [key: string]: AnyItem } =
         throwForce: 18,
         explosionRadius: 4.5,
         fuseTime: 3,
-        isConsumable: true
     } as ThrowableWeapon,
 
     'speedster_boots': {
+        ...ItemTemplate,
         id: 19,
         label: "armor",
         name: "Сапоги скорохода",
         icon: "game-icons:running-shoe",
-        quantity: 1,
-        rarity: "rare",
+        durability: 46,
+        maxDurability: 46,
+        rarity: Rarity.RARE,
         position: { x: 0, y: 0 },
-        type: "passive",
+        type: ItemType.Wearable,
         slotType: "boots",
-        effects: {
+        increments:
+        {
+            armor: 8,
+        },
+        effects: 
+        {
             "moveSpeed": 25,
             "dodgeChance": 10
         }
-    } as PassiveItem,
+    } as WearableItem,
 
     'auto_turret': {
+        ...ItemTemplate,
         id: 20,
         label: "deployable",
         name: "Мини-турель",
-        icon: "carbon:iot-connect",
-        quantity: 1,
+        icon: "game-icons:walking-turret",
+        quantity: 0,
+        maxQuantity: 1,
         durability: 100,
-        rarity: "epic",
+        maxDurability: 100,
+        rarity: Rarity.EPIC,
         position: { x: 0, y: 0 },
         type: "deployable",
         health: 120,
@@ -346,44 +398,53 @@ export const ItemDatabase: { [key: string]: AnyItem } =
     } as DeployableItem,
 
     'fury_potion': {
+        ...ItemTemplate,
         id: 21,
         label: "consumable",
         name: "Зелье ярости",
         icon: "hugeicons:potion",
         quantity: 1,
-        rarity: "rare",
+        rarity: Rarity.RARE,
         position: { x: 0, y: 0 },
         type: "active",
         useTime: 1,
         cooldown: 60,
         effect: "boost_damage",
-        isConsumable: true
     } as ActiveItem,
 
     'mammoth_plate': {
+        ...ItemTemplate,
         id: 22,
         label: "armor",
         name: "Нагрудник мамонта",
         icon: "game-icons:leather-vest",
-        quantity: 1,
-        rarity: "epic",
+        durability: 180,
+        maxDurability: 180,
+        rarity: Rarity.EPIC,
         position: { x: 0, y: 0 },
-        type: "passive",
+        type: ItemType.Wearable,
         slotType: "chestplate",
-        effects: {
+        increments:
+        {
+            armor: 31,
+        },
+        effects: 
+        {
             "defense": 30,
             "knockbackResist": 50
         }
-    } as PassiveItem,
+    } as WearableItem,
 
     'vampire_dagger': {
+        ...ItemTemplate,
         id: 23,
         label: "melee_weapon",
         name: "Кинжал вампира",
         icon: "game-icons:stiletto",
         quantity: 1,
         durability: 120,
-        rarity: "legendary",
+        maxDurability: 120,
+        rarity: Rarity.LEGENDARY,
         position: { x: 0, y: 0 },
         type: "melee_weapon",
         damage: 25,
@@ -394,21 +455,24 @@ export const ItemDatabase: { [key: string]: AnyItem } =
     } as MeleeWeapon,
 
     'revival_totem': {
+        ...ItemTemplate,
         id: 24,
         label: "special",
         name: "Тотем возрождения",
         icon: "game-icons:totem-head",
         quantity: 1,
-        rarity: "legendary",
+        rarity: Rarity.LEGENDARY,
         position: { x: 0, y: 0 },
         type: "special",
+        slotType: "special",
         restrictions: {
             "maxHealth": -25
         },
         benefits: {
             "reviveChance": 100,
             "cooldownReduction": 20
-        }
+        },
+        activated: false,
     } as SpecialItem
 };
 

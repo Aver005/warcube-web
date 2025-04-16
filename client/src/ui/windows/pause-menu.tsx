@@ -43,7 +43,7 @@ const itemVariants =
 
 const PauseMenu: React.FC = () =>
 {
-    const { socket, scene } = useNetworkStore();
+    const { scene } = useNetworkStore();
     const { setOverlayWindow } = useUIStore();
 
     const [hoveredItem, setHoveredItem] = useState<number | null>(null);
@@ -104,8 +104,8 @@ const PauseMenu: React.FC = () =>
                     }}
                     onSubmit={async (value) => 
                     {
-                        if (socket) socket.disconnect()
                         if (!scene) return { success: false, message: 'Сцена не найдена' }
+                        scene.disconnect()
                         scene.connect(value)
                         return { success: true }
                     }}

@@ -105,9 +105,12 @@ export class Player extends GameObjects.Sprite
 
     switchingWeapons(input: InputData)
     {
+        const oldSlot = this.activeWeapon;
         if (input.slot1) this.activeWeapon = 0;
         if (input.slot2) this.activeWeapon = 1;
         if (input.slot3) this.activeWeapon = 2;
+
+        if (oldSlot === this.activeWeapon) return
         useGameStore.getState().setActiveWeapon(this.activeWeapon);
     }
 

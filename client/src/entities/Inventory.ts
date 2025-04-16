@@ -4,8 +4,8 @@ export class Inventory implements IInventory
 {
     items!: AnyItem[];
     hotbar!: Hotbar;
-    specialSlot!: SpecialItem | null;
     armorSlots!: ArmorSlots;
+    specialSlot!: SpecialItem | null;
     maxSize!: number;
     
     constructor()
