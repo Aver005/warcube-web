@@ -4,16 +4,16 @@ import { InputData } from "@/types/Player";
 import { useGameStore } from "@/stores/game-store";
 import MainScene from "@/main-scene";
 import { Bullet } from "./Bullet";
-import { Socket } from "socket.io-client";
 import { usePlayerStore } from "@/stores/player-store";
 import { GroundItem } from "./GroundItem";
 import { ItemType } from "@/types/items";
+import { NetworkManager } from "@/network/NetworkManager";
 
 export class Player extends GameObjects.Sprite
 {
     id: string = '';
     declare scene: MainScene;
-    private socket!: Socket;
+    private network!: NetworkManager;
 
     private speed: number = 1.8;
 
@@ -48,7 +48,7 @@ export class Player extends GameObjects.Sprite
         this.id = id;
         this.name = `Player ${id}`;
         this.inventory = usePlayerStore.getState().inventory;
-        this.socket = scene.socket;
+        this.network = scene.networkManager;
         this.reloadText = scene.add.text(0, 0, 'Reloading...').setOrigin(0.5);
         this.reloadText.setVisible(false);
 
@@ -63,7 +63,7 @@ export class Player extends GameObjects.Sprite
     update(time: number, delta: number) 
     {
         this.updateReloadText();
-        if (this.socket.id !== this.id) return;
+        if (this.network.getID() !== this.id) return;
 
         const input = this.scene.getInput();
         this.movement(input);
@@ -83,7 +83,7 @@ export class Player extends GameObjects.Sprite
             usePlayerStore.getState().setPosition(newX, newY);
         }
 
-        this.socket.emit('playerMovement',
+        this.network.emit('playerMovement',
         {
             x: this.x,
             y: this.y,
@@ -128,7 +128,7 @@ export class Player extends GameObjects.Sprite
         if (this.id === bullet.getOwnerId()) return
         bullet.destroy();
 
-        if (this.id !== this.socket.id) return
+        if (this.network.getID() !== this.id) return;
         if (this.isDead) return
 
         const health = useGameStore.getState().health;
@@ -142,17 +142,17 @@ export class Player extends GameObjects.Sprite
         }
 
         this.isDead = true;
-        this.socket.emit('playerDead', { killerId: bullet.getOwnerId() });
+        this.network.emit('playerDead', { killerId: bullet.getOwnerId() });
     }
 
     onCollideWithItem(groundItem: GroundItem)
     {
-        if (this.id !== this.socket.id) return
+        if (this.network.getID() !== this.id) return;
         const input = this.scene.getInput();
         if (!input.pickup) return;
         if (this.inventory.items.length >= this.inventory.maxSize) return;
 
-        this.socket.emit('playerPickupItem', groundItem.id);
+        this.network.emit('playerPickupItem', groundItem.id);
         this.inventory.items.push(groundItem.item);
     }
 
@@ -203,12 +203,10 @@ export class Player extends GameObjects.Sprite
 
     private fire(time: number)
     {
-        if (!this.socket.id) return
-
         this.lastFired = time;
         this.setAmmo(this.ammo - 1);
 
-        this.socket.emit('playerShoot', 
+        this.network.emit('playerShoot', 
         {
             ...this.rotatePoint(this.x, this.y, this.rotation),
             rotation: this.rotation,
@@ -221,7 +219,7 @@ export class Player extends GameObjects.Sprite
         this.isReloading = true;
         this.reloadText?.setVisible(true);
 
-        this.socket.emit('playerReload', {
+        this.network.emit('playerReload', {
             startTime: time,
             endTime: time + this.reloadTime
         });
@@ -232,7 +230,7 @@ export class Player extends GameObjects.Sprite
             this.isReloading = false;
             this.reloadText?.setVisible(false);
 
-            this.socket.emit('playerReloadComplete');
+            this.network.emit('playerReloadComplete');
         });
     }
 
@@ -255,6 +253,4 @@ export class Player extends GameObjects.Sprite
         this.reloadText.destroy(fromScene);
         super.destroy(fromScene);
     }
-
-    getSocket() { return this.socket; }
 }

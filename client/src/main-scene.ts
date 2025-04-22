@@ -13,13 +13,14 @@ import { GroundItem } from "./entities/GroundItem";
 import { ObjectMap } from "./utils/object-map";
 import { Match } from "./entities/Match";
 import { ItemDatabase } from "./entities/ItemDatabase";
+import { NetworkManager } from "./network/NetworkManager";
 
 ///@ts-ignore
 const SERVER_IP = import.meta.env.VITE_SERVER_IP;
 
 class MainScene extends Phaser.Scene
 {
-    socket!: Socket;
+    networkManager!: NetworkManager;
     player: Player | null = null;
 
     private inputManager!: InputManager;
@@ -55,114 +56,15 @@ class MainScene extends Phaser.Scene
     connect(forceIP?: string)
     {
         const IP = forceIP || SERVER_IP;
-        this.socket = io(IP);
-
         this.match = new Match(this);
-
-        this.listeners();
+        this.networkManager = new NetworkManager(this, this.match);
+        this.networkManager.connect(IP);
     }
 
     disconnect()
     {
-        if (this.socket)
-        {
-            this.socket.disconnect();
-            this.socket.close();
-        }
-
-        this.clenup();
-    }
-
-    clenup()
-    {
+        this.networkManager.disconnect();
         this.match.destroy();
-    }
-
-    listeners()
-    {
-        this.socket.on('connect', () => useNetworkStore.getState().setSocket(this.socket));
-        this.socket.on('init', (data: InitEvent) =>
-        {
-            data.itemsOnGround.map((item) => this.spawnItem(item));
-            Object.entries(data.players).forEach(([id, playerData]) =>
-            {
-                if (!this.socket || this.socket === null) return;
-                const newPlayer = this.addPlayer(playerData);
-                if (id !== this.socket.id) return;
-                this.player = newPlayer;
-                this.setupCamera();
-            });
-        });
-
-        this.socket.on('newPlayer', (playerData: PlayerData) =>
-        {
-            this.addPlayer(playerData);
-        });
-
-        this.socket.on('playerDisconnected', (playerId: string) =>
-        {
-            this.match.getGameMap().getPlayers().map((player: Player) =>
-            {
-                if (!(player instanceof Player)) return;
-                if (player.id !== playerId) return
-                player.destroy();
-            });
-        });
-
-        this.socket.on('playerMoved', (data: PlayerMovementData) => 
-        {
-            const player = this.match.getGameMap().getPlayers().get(data.id);
-            if (!player) return
-            player.setPosition(data.x, data.y);
-            player.rotation = data.rotation;
-        });
-
-        this.socket.on('playerShoot', (data: PlayerShootEvent) => 
-        {
-            const bullet = new Bullet(this, data.id, data.x, data.y, data.rotation);
-            this.match.getGameMap().getBullets().add(data.id, bullet);
-        });
-
-        this.socket.on('playerReload', (playerId: string) => 
-        {
-            const player = this.match.getGameMap().getPlayers().get(playerId);
-            if (!player) return
-            player.setReloadTextVisible(true);
-        });
-
-        this.socket.on('playerReloadComplete', (playerId: string) => 
-        {
-            const player = this.match.getGameMap().getPlayers().get(playerId);
-            if (!player) return
-            player.setReloadTextVisible(false);
-        });
-
-        this.socket.on('playerDead', (data: PlayerDeadEvent) => 
-        {
-            const state = useGameStore.getState();
-            useMapDataStore.getState().newAction(
-                `${data.name} was killed by ${data.killerName}`
-            );
-
-            if (data.killerId === this.socket.id)
-            {
-                state.setKills(state.kills + 1);
-                return
-            }
-
-            if (!this.player) return;
-            this.player.respawn(data.x, data.y);
-            state.setDeaths(state.deaths + 1);
-        });
-
-        this.socket.on('playerPickupItem', (itemId: number) => 
-        {
-            const item = this.match.getGameMap().getItemsOnGround().get(itemId);
-            if (!item) return
-            item.destroy();
-        });
-
-        this.socket.on('disconnect', () => this.clenup());
     }
 
     setupCamera()

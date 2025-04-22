@@ -1,15 +1,12 @@
-import { Scene } from "phaser";
 import { GameMap } from "./GameMap";
-import { Bullet } from "./Bullet";
-import { Player } from "./Player";
-import { GroundItem } from "./GroundItem";
+import MainScene from "@/main-scene";
 
 export class Match
 {
-    private scene!: Scene;
+    private scene!: MainScene;
     private gameMap!: GameMap;
 
-    constructor(scene: Scene)
+    constructor(scene: MainScene)
     {
         this.scene = scene;
         this.gameMap = new GameMap(scene);
