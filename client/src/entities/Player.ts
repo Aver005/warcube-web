@@ -7,7 +7,7 @@ import { Bullet } from "./Bullet";
 import { Socket } from "socket.io-client";
 import { usePlayerStore } from "@/stores/player-store";
 import { GroundItem } from "./GroundItem";
-import { ItemDatabase } from "./ItemDatabase";
+import { ItemType } from "@/types/items";
 
 export class Player extends GameObjects.Sprite
 {
@@ -26,6 +26,7 @@ export class Player extends GameObjects.Sprite
     private isReloading: boolean = false;
 
     private reloadText!: Phaser.GameObjects.Text;
+    private hands!: Phaser.GameObjects.Sprite;
 
     private health: number = 100;
     private armor: number = 0;
@@ -51,6 +52,9 @@ export class Player extends GameObjects.Sprite
         this.reloadText = scene.add.text(0, 0, 'Reloading...').setOrigin(0.5);
         this.reloadText.setVisible(false);
 
+        this.hands = scene.add.sprite(0, 0, 'pistol-hands').setOrigin(0.5);
+        this.hands.setVisible(false);
+
         this.scene.events.on('update', 
             (time: number, delta: number) => { this.update(time, delta) } 
         );
@@ -66,6 +70,7 @@ export class Player extends GameObjects.Sprite
         this.shooting(input, time);
         this.switchingWeapons(input);
         this.updateRotation();
+        this.updateItemInHand();
     }
 
     movement(input: InputData)
@@ -112,6 +117,10 @@ export class Player extends GameObjects.Sprite
 
         if (oldSlot === this.activeWeapon) return
         useGameStore.getState().setActiveWeapon(this.activeWeapon);
+
+        const inventory = usePlayerStore.getState().inventory;
+        const itemInHand = inventory.hotbar[this.activeWeapon];
+        this.hands.setVisible(!!itemInHand && itemInHand.type === ItemType.RangedWeapon);
     }
 
     onCollideWithBullet(bullet: Bullet)
@@ -158,6 +167,13 @@ export class Player extends GameObjects.Sprite
         this.reloadText.setPosition(this.x, this.y - 64);
     }
 
+    updateItemInHand()
+    {
+        if (!this.hands.visible) return;
+        this.hands.setPosition(this.x, this.y);
+        this.hands.rotation = this.rotation;
+    }
+
     private updateRotation()
     {
         const pointer = this.scene.input.activePointer;
@@ -171,6 +187,20 @@ export class Player extends GameObjects.Sprite
         this.rotation = angle;
     }
 
+    rotatePoint(x: number, y: number, rotation: number): { x: number, y: number } 
+    {
+        const pointer = this.scene.input.activePointer;
+        const angle = Math.atan2(pointer.worldY - y, pointer.worldX - x);
+        const barrelOffsetX = 84;
+        const barrelOffsetY = 0;
+
+        // Вычисляем координаты дуло с учетом угла
+        const bulletX = x + barrelOffsetX * Math.cos(angle);
+        const bulletY = y + barrelOffsetY * Math.sin(angle);
+    
+        return { x: bulletX, y: bulletY };
+    }
+
     private fire(time: number)
     {
         if (!this.socket.id) return
@@ -180,8 +210,7 @@ export class Player extends GameObjects.Sprite
 
         this.socket.emit('playerShoot', 
         {
-            x: this.x,
-            y: this.y,
+            ...this.rotatePoint(this.x, this.y, this.rotation),
             rotation: this.rotation,
             ammo: this.ammo
         });

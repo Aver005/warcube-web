@@ -37,6 +37,7 @@ class MainScene extends Phaser.Scene
     preload()
     {
         this.load.image('player', './player.png');
+        this.load.image('pistol-hands', './pistol-hands.png');
         this.load.image('item', './item.png');
         Object.entries(ItemDatabase).forEach(([key, item]) => 
             this.load.image(item.icon, `./icons/items/${item.icon.replace(':', '_')}.svg`)

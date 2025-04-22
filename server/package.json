@@ -3,22 +3,21 @@
     "version": "1.0.0",
     "description": "",
     "main": "server.js",
-    "scripts": 
-    {
+    "scripts": {
         "start": "ts-node src/server.ts",
         "build": "tsc"
     },
     "keywords": [],
     "author": "",
     "license": "ISC",
-    "dependencies": 
-    {
+    "dependencies": {
+        "@elysiajs/cors": "^1.2.0",
         "cors": "^2.8.5",
+        "elysia": "^1.2.25",
         "express": "^5.1.0",
         "socket.io": "^4.8.1"
     },
-    "devDependencies": 
-    {
+    "devDependencies": {
         "@types/cors": "^2.8.17",
         "@types/express": "^5.0.1",
         "@types/node": "^22.14.0",
