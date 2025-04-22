@@ -11,6 +11,7 @@ import { Item } from "./types/items";
 import { Player } from "./entities/Player";
 import { GroundItem } from "./entities/GroundItem";
 import { ObjectMap } from "./utils/object-map";
+import { Match } from "./entities/Match";
 import { ItemDatabase } from "./entities/ItemDatabase";
 
 ///@ts-ignore
@@ -24,9 +25,7 @@ class MainScene extends Phaser.Scene
     private inputManager!: InputManager;
     private camera!: Phaser.Cameras.Scene2D.Camera;
 
-    bullets!: ObjectMap<Bullet>;
-    players!: ObjectMap<Player>;
-    itemsOnGround!: ObjectMap<GroundItem>;
+    private match!: Match;
 
 
     constructor()
@@ -39,7 +38,7 @@ class MainScene extends Phaser.Scene
         this.load.image('player', './player.png');
         this.load.image('pistol-hands', './pistol-hands.png');
         this.load.image('item', './item.png');
-        Object.entries(ItemDatabase).forEach(([key, item]) => 
+        Object.entries(ItemDatabase).forEach(([key, item]) =>
             this.load.image(item.icon, `./icons/items/${item.icon.replace(':', '_')}.svg`)
         );
     }
@@ -58,32 +57,7 @@ class MainScene extends Phaser.Scene
         const IP = forceIP || SERVER_IP;
         this.socket = io(IP);
 
-        this.bullets = new ObjectMap<Bullet>(this);
-        this.players = new ObjectMap<Player>(this);
-        this.itemsOnGround = new ObjectMap<GroundItem>(this);
-
-        this.physics.add.overlap(
-            this.bullets.getGroup(),
-            this.players.getGroup(),
-            (bullet, player) => 
-            {
-                if (!(bullet instanceof Bullet)) return;
-                if (!(player instanceof Player)) return;
-                if (bullet.getOwnerId() === player.id) return;
-                player.onCollideWithBullet(bullet);
-            }
-        );
-
-        this.physics.add.overlap(
-            this.itemsOnGround.getGroup(),
-            this.players.getGroup(),
-            (item, player) => 
-            {
-                if (!(item instanceof GroundItem)) return;
-                if (!(player instanceof Player)) return;
-                player.onCollideWithItem(item);
-            }
-        );
+        this.match = new Match(this);
 
         this.listeners();
     }
@@ -95,15 +69,13 @@ class MainScene extends Phaser.Scene
             this.socket.disconnect();
             this.socket.close();
         }
-        
+
         this.clenup();
     }
 
     clenup()
     {
-        this.bullets.destroy();
-        this.players.destroy();
-        this.itemsOnGround.destroy();
+        this.match.destroy();
     }
 
     listeners()
@@ -129,7 +101,7 @@ class MainScene extends Phaser.Scene
 
         this.socket.on('playerDisconnected', (playerId: string) =>
         {
-            this.players.map((player) =>
+            this.match.getGameMap().getPlayers().map((player: Player) =>
             {
                 if (!(player instanceof Player)) return;
                 if (player.id !== playerId) return
@@ -139,7 +111,7 @@ class MainScene extends Phaser.Scene
 
         this.socket.on('playerMoved', (data: PlayerMovementData) => 
         {
-            const player = this.players.get(data.id);
+            const player = this.match.getGameMap().getPlayers().get(data.id);
             if (!player) return
             player.setPosition(data.x, data.y);
             player.rotation = data.rotation;
@@ -148,19 +120,19 @@ class MainScene extends Phaser.Scene
         this.socket.on('playerShoot', (data: PlayerShootEvent) => 
         {
             const bullet = new Bullet(this, data.id, data.x, data.y, data.rotation);
-            this.bullets.add(data.id, bullet);
+            this.match.getGameMap().getBullets().add(data.id, bullet);
         });
 
         this.socket.on('playerReload', (playerId: string) => 
         {
-            const player = this.players.get(playerId);
+            const player = this.match.getGameMap().getPlayers().get(playerId);
             if (!player) return
             player.setReloadTextVisible(true);
         });
 
         this.socket.on('playerReloadComplete', (playerId: string) => 
         {
-            const player = this.players.get(playerId);
+            const player = this.match.getGameMap().getPlayers().get(playerId);
             if (!player) return
             player.setReloadTextVisible(false);
         });
@@ -185,7 +157,7 @@ class MainScene extends Phaser.Scene
 
         this.socket.on('playerPickupItem', (itemId: number) => 
         {
-            const item = this.itemsOnGround.get(itemId);
+            const item = this.match.getGameMap().getItemsOnGround().get(itemId);
             if (!item) return
             item.destroy();
         });
@@ -200,7 +172,7 @@ class MainScene extends Phaser.Scene
         this.camera = this.cameras.main;
         this.camera.setBounds(0, 0, 4000, 4000); // Границы камеры = размер карты
         this.camera.startFollow(this.player); // Камера следует за игроком
-        
+
         // Дополнительные настройки камеры (опционально)
         this.camera.setZoom(1); // Увеличение
         this.camera.setDeadzone(100, 100); // Зона, при выходе за которую камера начинает двигаться
@@ -211,13 +183,13 @@ class MainScene extends Phaser.Scene
     addPlayer(playerData: PlayerData) 
     {
         const newPlayer = new Player(this, playerData.id, 'player', playerData.x, playerData.y);
-        this.players.add(playerData.id, newPlayer)
+        this.match.getGameMap().getPlayers().add(playerData.id, newPlayer)
         return newPlayer;
     }
 
     spawnItem(item: Item)
     {
-        this.itemsOnGround.add(
+        this.match.getGameMap().getItemsOnGround().add(
             item.id,
             new GroundItem(this, item)
         );
