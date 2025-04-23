@@ -1,4 +1,5 @@
 import { GameObjects } from "phaser";
+import { SocketEvent } from '../types/SocketEvent';
 import { Inventory } from "./Inventory";
 import { InputData } from "@/types/Player";
 import { useGameStore } from "@/stores/game-store";
@@ -83,7 +84,7 @@ export class Player extends GameObjects.Sprite
             usePlayerStore.getState().setPosition(newX, newY);
         }
 
-        this.network.emit('playerMovement',
+        this.network.emit(SocketEvent.PLAYER_MOVED,
         {
             x: this.x,
             y: this.y,
@@ -142,7 +143,7 @@ export class Player extends GameObjects.Sprite
         }
 
         this.isDead = true;
-        this.network.emit('playerDead', { killerId: bullet.getOwnerId() });
+        this.network.emit(SocketEvent.PLAYER_DEAD, { killerId: bullet.getOwnerId() });
     }
 
     onCollideWithItem(groundItem: GroundItem)
@@ -152,7 +153,7 @@ export class Player extends GameObjects.Sprite
         if (!input.pickup) return;
         if (this.inventory.items.length >= this.inventory.maxSize) return;
 
-        this.network.emit('playerPickupItem', groundItem.id);
+        this.network.emit(SocketEvent.PLAYER_PICKUP_ITEM, groundItem.id);
         this.inventory.items.push(groundItem.item);
     }
 
@@ -206,7 +207,7 @@ export class Player extends GameObjects.Sprite
         this.lastFired = time;
         this.setAmmo(this.ammo - 1);
 
-        this.network.emit('playerShoot', 
+        this.network.emit(SocketEvent.PLAYER_SHOOT,
         {
             ...this.rotatePoint(this.x, this.y, this.rotation),
             rotation: this.rotation,
@@ -219,7 +220,7 @@ export class Player extends GameObjects.Sprite
         this.isReloading = true;
         this.reloadText?.setVisible(true);
 
-        this.network.emit('playerReload', {
+        this.network.emit(SocketEvent.PLAYER_RELOAD, {
             startTime: time,
             endTime: time + this.reloadTime
         });
@@ -230,7 +231,7 @@ export class Player extends GameObjects.Sprite
             this.isReloading = false;
             this.reloadText?.setVisible(false);
 
-            this.network.emit('playerReloadComplete');
+            this.network.emit(SocketEvent.PLAYER_RELOAD_COMPLETE);
         });
     }
 
