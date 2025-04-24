@@ -15,11 +15,13 @@ import { Match } from "./entities/Match";
 import { ItemDatabase } from "./entities/ItemDatabase";
 import { NetworkManager } from "./network/NetworkManager";
 
+// Import the new InteractiveBlock class
+import InteractiveBlock from './entities/InteractiveBlock';
+
 ///@ts-ignore
 const SERVER_IP = import.meta.env.VITE_SERVER_IP;
 
-class MainScene extends Phaser.Scene
-{
+class MainScene extends Phaser.Scene {
     networkManager!: NetworkManager;
     player: Player | null = null;
 
@@ -28,14 +30,11 @@ class MainScene extends Phaser.Scene
 
     private match!: Match;
 
-
-    constructor()
-    {
+    constructor() {
         super({ key: 'GameScene' });
     }
 
-    preload()
-    {
+    preload(): void {
         this.load.image('player', './player.png');
         this.load.image('pistol-hands', './pistol-hands.png');
         this.load.image('item', './item.png');
@@ -44,32 +43,27 @@ class MainScene extends Phaser.Scene
         );
     }
 
-    create()
-    {
+    create(): void {
         this.inputManager = new InputManager(this);
         useNetworkStore.getState().setScene(this);
         this.connect();
-
-        // console.log(JSON.stringify(ItemDatabase))
     }
 
-    connect(forceIP?: string)
-    {
+    connect(forceIP?: string): void {
         const IP = forceIP || SERVER_IP;
         this.match = new Match(this);
         this.networkManager = new NetworkManager(this, this.match);
         this.networkManager.connect(IP);
     }
 
-    disconnect()
-    {
+    disconnect(): void {
         this.networkManager.disconnect();
         this.match.destroy();
     }
 
-    setupCamera()
-    {
-        if (!this.player) return
+    setupCamera(): void {
+        if (!this.player) return;
+
         // Настройка камеры
         this.camera = this.cameras.main;
         this.camera.setBounds(0, 0, 4000, 4000); // Границы камеры = размер карты
@@ -82,22 +76,27 @@ class MainScene extends Phaser.Scene
         this.camera.followOffset.set(0, -50); // Смещение камеры относительно игрока
     }
 
-    addPlayer(playerData: PlayerData) 
-    {
+    addPlayer(playerData: PlayerData): Player {
         const newPlayer = new Player(this, playerData.id, 'player', playerData.x, playerData.y);
-        this.match.getGameMap().getPlayers().add(playerData.id, newPlayer)
+        this.match.getGameMap().getPlayers().add(playerData.id, newPlayer);
         return newPlayer;
     }
 
-    spawnItem(item: Item)
-    {
+    spawnItem(item: Item): void {
         this.match.getGameMap().getItemsOnGround().add(
             item.id,
             new GroundItem(this, item)
         );
     }
 
+    // New method to handle instantiation of InteractiveBlock instances
+    spawnInteractiveBlock(x: number, y: number, width: number, height: number): InteractiveBlock {
+        const interactiveBlock = new InteractiveBlock(this, x, y, width, height);
+        this.add.existing(interactiveBlock);
+        return interactiveBlock;
+    }
+
     getInput(): InputData { return this.inputManager.getInputs(); }
 }
 
-export default MainScene
+export default MainScene;
